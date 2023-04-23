@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "service.name" . }}
+data:
+  application.yaml: |
+    http:
+      server:
+        address: ":{{ .Values.service.internalPort }}"
+        system:
+          address: ":{{ .Values.service.systemPort }}"
