@@ -57,14 +57,33 @@ push: buildx
 	echo "  tag: latest@${digest}" >> deploy/charts/${chart_name}/images-lock.yaml
 
 ############ Deploy rules ############
+# Only run this once to get nginx controller deployed
+.PHONY: deploy-nginx
+deploy-nginx: KUBE_CONTEXT=docker-desktop
+deploy-nginx:
+	helm upgrade --install ingress-nginx ingress-nginx \
+    	--repo https://kubernetes.github.io/ingress-nginx \
+    	--namespace default && \
+    kubectl wait --namespace default \
+    	--for=condition=ready pod \
+   		--selector=app.kubernetes.io/component=controller \
+    	--timeout=120s
+
+.PHONY: undeploy-nginx
+undeploy-nginx:
+	helm uninstall ingress-nginx \
+	--kube-context=docker-desktop \
+	--namespace ingress-nginx
+
+
 .PHONY: deploy
 deploy: KUBE_CONTEXT=docker-desktop
 deploy:
-	$(eval chart_name  := $(subst -service,,$(notdir $(CURDIR))))
+	$(eval chart_name := $(subst -service,,$(notdir $(CURDIR))))
 	helm upgrade --install --namespace default ${chart_name} ./deploy/charts/${chart_name} \
-	--kube-context=${KUBE_CONTEXT} \
-	-f ./deploy/charts/${chart_name}/values.yaml \
-	-f ./deploy/charts/${chart_name}/images-lock.yaml
+		--kube-context=${KUBE_CONTEXT} \
+		-f ./deploy/charts/${chart_name}/values.yaml \
+		-f ./deploy/charts/${chart_name}/images-lock.yaml
 
 .PHONY: undeploy
 undeploy: KUBE_CONTEXT=docker-desktop
