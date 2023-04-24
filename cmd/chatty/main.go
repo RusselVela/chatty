@@ -1,8 +1,9 @@
 package main
 
-import "go.uber.org/zap"
+import (
+	"github.com/RusselVela/chatty/cmd/chatty/app"
+)
 
 func main() {
-
-	zap.L().Info("app started")
+	app.New().Run()
 }

@@ -61,6 +61,9 @@ spec:
         - name: {{ template "service.name" . }}
           image: '{{ .Values.image.registry }}/chatty:{{ .Values.image.tag | default .Values.image.refs.chatty_service }}'
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: JWT_SECRET
+              value: {{ .Values.jwt.secret }}
           ports:
             - containerPort: {{ .Values.service.internalPort }}
           livenessProbe:
