@@ -26,3 +26,5 @@ resources:
   requests:
     cpu: "1000m"
     memory: "256Mi"
+jwt:
+  secret: mySecret123

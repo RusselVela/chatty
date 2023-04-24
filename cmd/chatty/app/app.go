@@ -2,6 +2,7 @@ package app
 
 import (
 	"embed"
+	"github.com/RusselVela/chatty/internal/app/datasourcce/repository/inmemory"
 
 	"github.com/RusselVela/chatty/internal/app/service"
 	"github.com/RusselVela/chatty/internal/handler/web"
@@ -34,6 +35,8 @@ func NewWithConfig(cfgPath string) *fx.App {
 			fx.Annotate(web.NewWebHandler, fx.As(new(web.ServerInterface))),
 		),
 		fx.Invoke(
+			service.SetupJWTSecret,
+			inmemory.InitDatabase,
 			web.RegisterHandlers,
 			LogAppStartStop,
 		),

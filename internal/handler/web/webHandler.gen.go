@@ -18,13 +18,13 @@ import (
 
 // FailedSchema defines model for FailedSchema.
 type FailedSchema struct {
-	Error *string `json:"error,omitempty"`
-	Ok    *bool   `json:"ok,omitempty"`
+	Error string `json:"error"`
+	Ok    bool   `json:"ok"`
 }
 
 // InternalServerErrorSchema defines model for InternalServerErrorSchema.
 type InternalServerErrorSchema struct {
-	Error *string `json:"error,omitempty"`
+	Error string `json:"error"`
 }
 
 // LoginSchema defines model for LoginSchema.
@@ -39,18 +39,28 @@ type PostMessageSchema struct {
 	Recipient string `json:"recipient"`
 }
 
+// SignUpSchema defines model for SignUpSchema.
+type SignUpSchema = LoginSchema
+
 // SuccessLoginSchema defines model for SuccessLoginSchema.
 type SuccessLoginSchema struct {
-	Ok    *bool   `json:"ok,omitempty"`
-	Token *string `json:"token,omitempty"`
+	Ok    bool   `json:"ok"`
+	Token string `json:"token"`
 }
 
 // SuccessPostMessageSchema defines model for SuccessPostMessageSchema.
 type SuccessPostMessageSchema struct {
-	Message   *string `json:"message,omitempty"`
-	Ok        *bool   `json:"ok,omitempty"`
-	Recipient *string `json:"recipient,omitempty"`
-	Timestamp *string `json:"timestamp,omitempty"`
+	Message   string `json:"message"`
+	Ok        bool   `json:"ok"`
+	Recipient string `json:"recipient"`
+	Timestamp string `json:"timestamp"`
+}
+
+// SuccessSignupSchema defines model for SuccessSignupSchema.
+type SuccessSignupSchema struct {
+	Id       string `json:"id"`
+	Ok       bool   `json:"ok"`
+	Username string `json:"username"`
 }
 
 // N200SuccessfulLogin defines model for 200SuccessfulLogin.
@@ -59,8 +69,14 @@ type N200SuccessfulLogin = SuccessLoginSchema
 // N200SuccessfulPostMessage defines model for 200SuccessfulPostMessage.
 type N200SuccessfulPostMessage = SuccessPostMessageSchema
 
+// N201SuccessfulSignUp defines model for 201SuccessfulSignUp.
+type N201SuccessfulSignUp = SuccessSignupSchema
+
 // N400FailedPostMessage defines model for 400FailedPostMessage.
 type N400FailedPostMessage = FailedSchema
+
+// N400FailedSignUp defines model for 400FailedSignUp.
+type N400FailedSignUp = FailedSchema
 
 // N401FailedLogin defines model for 401FailedLogin.
 type N401FailedLogin = FailedSchema
@@ -74,20 +90,29 @@ type LoginRequest = LoginSchema
 // PostMessageRequest defines model for PostMessageRequest.
 type PostMessageRequest = PostMessageSchema
 
+// SignUpRequest defines model for SignUpRequest.
+type SignUpRequest = SignUpSchema
+
 // PublicPostMessageJSONRequestBody defines body for PublicPostMessage for application/json ContentType.
 type PublicPostMessageJSONRequestBody = PostMessageSchema
 
 // PublicPostLoginJSONRequestBody defines body for PublicPostLogin for application/json ContentType.
 type PublicPostLoginJSONRequestBody = LoginSchema
 
+// PublicPostSignupJSONRequestBody defines body for PublicPostSignup for application/json ContentType.
+type PublicPostSignupJSONRequestBody = SignUpSchema
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Sends a message to a user or channel
-	// (POST /chatty/chats/postMessage)
+	// (POST /v1/chatty/chats/postMessage)
 	PublicPostMessage(ctx echo.Context) error
 	// Authenticates a user on Chatty
-	// (POST /chatty/login)
+	// (POST /v1/chatty/login)
 	PublicPostLogin(ctx echo.Context) error
+	// Registers a new user
+	// (POST /v1/chatty/signup)
+	PublicPostSignup(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -110,6 +135,15 @@ func (w *ServerInterfaceWrapper) PublicPostLogin(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshalled arguments
 	err = w.Handler.PublicPostLogin(ctx)
+	return err
+}
+
+// PublicPostSignup converts echo context to params.
+func (w *ServerInterfaceWrapper) PublicPostSignup(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PublicPostSignup(ctx)
 	return err
 }
 
@@ -141,29 +175,33 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.POST(baseURL+"/chatty/chats/postMessage", wrapper.PublicPostMessage)
-	router.POST(baseURL+"/chatty/login", wrapper.PublicPostLogin)
+	router.POST(baseURL+"/v1/chatty/chats/postMessage", wrapper.PublicPostMessage)
+	router.POST(baseURL+"/v1/chatty/login", wrapper.PublicPostLogin)
+	router.POST(baseURL+"/v1/chatty/signup", wrapper.PublicPostSignup)
 
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/7RWzW7jNhB+FYIt0IsQKe32olPTogtksQWCTdo9FDkw1MRiliJZDmXDNfzuxZCyJUdS",
-	"LHS9J1HD4ceP87/j0jbOGjABebnjHv5pAcOvtlIQBR/tSplPSUr/0poAJi6Fc1pJEZQ1+QtaQzKUNTSC",
-	"Vt97eOYl/y7vL8jTLuYR9D6p7vf7jFeA0itHULzkDzWwjggLlmnS5vuM31kMfwCiWMGlGQ2gF/NCMBUT",
-	"zMCGNekopzMe0FmDyXw/FsV9KyUgPrc6PvtilDvcM7aM20whwyMNMuUJr8HjL81ukV07BTJoGPDUW2L6",
-	"rijeC6Wh+hYsE/J5ZsaGxK5qgVwvtaI/8N76RPI6QV3Wxefopf0+Qd4V138a0YbaevUvVL9HeuXu1akP",
-	"nx9YsF8ghkWjEJVZMeuZMmuhVUVAPxfFrQngjdD34Nfgj1AXedcE9vwjD8osabNEhfQ6OLrtxFLljjtv",
-	"HfjQFTE4sA9bB7zkGLwyK3qo/TIQP1mrQZiI3Yns0wvIQJrznBdfNwU7TN8RkBOIG+srWj9b34jAy16Y",
-	"jZ/TInFsYPpyql3KQ8XLv3vNrAd8nOA3TuARy6ZPyhEhD1I51QXM24x61ewIOcVoou6NKE27NeMx7Bda",
-	"cz9/91caZY7dW8bKeFANYBCNWxRZlB4gW6/CNlJMrF424aYNNS2fQHjw7w92+PD5gXcZFVnF3d4odQgu",
-	"Jacyz/ZQCISMVKERSvOSr0GLK98igv5lRbIraRue8RSR/FPcYX+BFnyU5Td3t7Gw2qZpDVUVYMowD0Iz",
-	"ejjbqFAzB+CRSKmgXyH+gOy3WoSwZQh+rSQF9ho8JvT1dbS7AyOc4iX/6aq4KmLohzoaJpfxcPxg7k5b",
-	"Df2Oy+g9mAqZOPR+Yi8YpRXVUlkLY0DzeKmPNfK24iW/a5+0ksNWlg1mru1c4TwZy/KJOWhi7pjH6vTy",
-	"2SEgtd3zAJO9OfWhJYcnmlXqPecPzzSoGPZt0wi/Xe6hIFZIBSj5hj8SyCEe9KGfT8cAJROYEOMVj+Cm",
-	"C8U3vJ/mhP/h+5N5/Ou9/nEwOixy2XDMuaizzppy7KZY4wiP5DveeipC2kqha4shp6R/PJ577ToXYdjN",
-	"3S32JarD3j/u/wsAAP//Dfx+NxkNAAA=",
+	"H4sIAAAAAAAC/7RXwW7jNhD9FYIt0IsQ2e32olPTogtksUWDOOkeFj4w0thiliK1HMqBG/jfiyFlS44k",
+	"S9lqT5bF4dObecOZ4QtPTVEaDdohT164ha8VoPvdZBL8i49mK/VdeEv/U6MdaP8oylLJVDhpdPyERtM7",
+	"THMoBD39aGHDE/5D3HwgDqsYe9BVMD0cDhHPAFMrS4LiCb/PgdVEmDNMkTU/RPzWoPsLEMUW5mbUgp7M",
+	"C0FnTDANz6wIW4nkSm71Qzk3v4A6nZrc6qrkZGcBS6MxqPnzYrGq0hQQN5XyKszHMOCOSOuXmUSGJxoU",
+	"tDNeLS3mZjdJ5tqA9HUtnmofmC4bpkGVuUmuvHjD/MJ6N4jvFov3QirIvkcAA/J40LRxIXBZBZSJqZL0",
+	"D6w19ozkzLEb4/eAYD251IJwkA3zWwaoeU/HGL2w3pS6d4vlgxaVy42V/0L2p6eXvLza9eHTPXPmC/gT",
+	"VUhEqbfMWCb1TiiZEdCvi8WNdmC1UCuwO7AnqFn86sEedvJozII1C1TIroajr51FKnnhpTUlWFe3Iziy",
+	"d/sSeMLRWam35Kj50nr9aIwCoesC+LWSFjKefCajqMZYR0dj8/gEqSOMYW8mE3n1weFvtQtlB70UiM/G",
+	"ZvS8MbYQjifNy6jrfYVEvIBxRifLqAHs49ctlR2WRVNjOoQspLKUdX5dZtSYRifIPkZnPZCyVqm/Nzz5",
+	"/IZZY00w3UbV8aw/mSLuD9tEUfpSL+zvdW6oQb0p6kO8L6kRcScLQCeKclwr70WfYG2UC/6d9baOazJ7",
+	"k1fTk97TbmW+7Mt5qkOQVla6vScYOD09u+vK5fT4CMKCfX+U/sOne16XLk/MrzZ5kDtXhioo9cYcK65I",
+	"vQZQCKl4wnegxJWtEEH9tqV3V6kpeMSDW/zOr7B/QAneKafXtze+g5miqDSVb2BSMwtCMdKCPUuXsxLA",
+	"olfHqVeIPyH7IxfO7RmC3cmUArMDiwF9t/ShL0GLUvKE/3K1uFr4ouFyH5h4t4xTv9//YFyejx30t9uy",
+	"VqAzZOI4MZMDgpEy1LfSXGgNivvvWt+PbjKe8NvqUcm0PdZErZvKfqhJnV1m4p7bQ894PIxV28WDs2qY",
+	"bsYBeue00POnbO4ZDEKfH988MAz4zK+KQtj9dIWc2CIdraANXxNIKyXUcXzqTwM6UqCdz1o84es6IS8k",
+	"QBjLvkH+s4vs/xf+Y2tSm6Rae6qcVa/RUI4oVd8VB6W6g61EBxbruy7hXxAoVPhvUej85tyVaDlFou7t",
+	"7M3Hstk3n0gDQexK45sQoaCfbCpLXUKZVKjcoIupKq9P+15LVXoYdn17g00PqbEP68N/AQAA//+uNzCx",
+	"7REAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
