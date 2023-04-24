@@ -1,0 +1,15 @@
+service:
+  name: chatty-service
+logging:
+  level: info
+  useJsonFormat: true
+fx:
+  logging:
+    level: error
+http:
+  server:
+    address: ":8443"
+    system:
+      address: ":8080"
+  client:
+    requestTimeout: 15
