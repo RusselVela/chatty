@@ -1,0 +1,157 @@
+openapi: 3.0.0
+info:
+  title: Russel Vela's Chatty service
+  version: v1
+  description: API to communicate in real time with peers
+  contact:
+    name: Russel Vela
+    email: vela.russel@gmail.com
+servers:
+  - url: localhost/v1
+tags:
+  - name: Public
+    description: public APIs
+paths:
+  /chatty/login:
+    post:
+      summary: Authenticates a user on Chatty
+      description: Authenticates a user on Chatty
+      operationId: public-post-login
+      tags:
+        - Public
+      requestBody:
+        $ref: '#/components/requestBodies/LoginRequest'
+      responses:
+        200:
+          $ref: '#/components/responses/200SuccessfulLogin'
+        401:
+          $ref: '#/components/responses/401FailedLogin'
+        500:
+          $ref: '#/components/responses/500InternalServerError'
+  /chatty/chats/postMessage:
+    post:
+      summary: Sends a message to a user or channel
+      description: Sends a message to a user or channel
+      operationId: public-post-message
+      tags:
+        - Public
+      requestBody:
+        $ref: '#/components/requestBodies/PostMessageRequest'
+      responses:
+        200:
+          $ref: '#/components/responses/200SuccessfulPostMessage'
+        400:
+          $ref: '#/components/responses/400FailedPostMessage'
+        401:
+          $ref: '#/components/responses/401UnauthorizedError'
+        500:
+          $ref: '#/components/responses/500InternalServerError'
+#  /chatty/channels/subscribe:
+components:
+  requestBodies:
+    LoginRequest:
+      description: The request to login
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoginSchema'
+    PostMessageRequest:
+      description: The request to send a new message
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PostMessageSchema'
+
+  responses:
+    200SuccessfulLogin:
+      description: Login is successful
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SuccessLoginSchema'
+    401FailedLogin:
+      description: Failed login
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/FailedSchema'
+    200SuccessfulPostMessage:
+      description: Message sent successfully
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SuccessPostMessageSchema'
+    400FailedPostMessage:
+      description: Message not sent due to client error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/FailedSchema'
+    401UnauthorizedError:
+      description: JWT token is missing or invalid
+    500InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/InternalServerErrorSchema'
+
+  schemas:
+    LoginSchema:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+    SuccessLoginSchema:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        token:
+          type: string
+          format: password
+    FailedSchema:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        error:
+          type: string
+    PostMessageSchema:
+      type: object
+      required:
+        - recipient
+        - message
+      properties:
+        recipient:
+          type: string
+        message:
+          type: string
+    SuccessPostMessageSchema:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        recipient:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+    InternalServerErrorSchema:
+      type: object
+      properties:
+        error:
+          type: string
+
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

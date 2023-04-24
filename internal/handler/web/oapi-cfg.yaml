@@ -1,0 +1,6 @@
+package: web
+generate:
+  echo-server: true
+  embedded-spec: true
+  models: true
+output: web_handler.gen.go
