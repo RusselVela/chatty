@@ -3,8 +3,8 @@ package service
 import (
 	"fmt"
 	"github.com/RusselVela/chatty/internal/app/datasourcce/repository/inmemory"
+	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
-	"time"
 )
 
 type ChattyService struct {
@@ -36,7 +36,7 @@ func (cs *ChattyService) Login(username string, password string) (string, error)
 	}
 	zap.L().Info(fmt.Sprintf("user login: %s", username))
 
-	token, err := generateJWT(username)
+	token, err := generateJWT(*user)
 	if err != nil {
 		return "", err
 	}
@@ -44,6 +44,27 @@ func (cs *ChattyService) Login(username string, password string) (string, error)
 	return token, nil
 }
 
-func (cs *ChattyService) PostMessage(token string, recipient string, message string) (int64, error) {
-	return time.Now().Unix(), nil
+func (cs *ChattyService) HandleConnections(ctx echo.Context, username string) error {
+	user := inmemory.Users.Get(username)
+	if user == nil {
+		msg := "user %s not found"
+		zap.L().Error(fmt.Sprintf(msg, username))
+		return fmt.Errorf(msg, username)
+	}
+
+	wsClient := &WsClient{}
+	err := wsHandler.UpgradeConnection(ctx, wsClient)
+	if err != nil {
+		return err
+	}
+	wsClient.user = user
+
+	clients[user.Username] = wsClient
+
+	wsClient.readMessages()
+
+	wsClient.ctx, wsClient.cancel = nil, nil
+	wsClient.wsConn = nil
+
+	return nil
 }

@@ -1,7 +1,10 @@
-package app
+package web
 
 import (
 	"context"
+	"github.com/RusselVela/chatty/internal/app/service"
+	"github.com/golang-jwt/jwt/v4"
+	echojwt "github.com/labstack/echo-jwt/v4"
 	"net"
 	"net/http"
 	"time"
@@ -17,6 +20,11 @@ import (
 const (
 	httpServerConfigKey = "http.server"
 )
+
+var unauthenticatedPaths = []string{
+	"/v1/chatty/signup",
+	"/v1/chatty/token",
+}
 
 // HTTPServerConfig provides configuration for HTTP Server
 type HTTPServerConfig struct {
@@ -78,7 +86,16 @@ func ConfigureHTTPServers(lifecycle fx.Lifecycle, shutdowner fx.Shutdowner, k *k
 		return nil, err
 	}
 
-	e.Use(middleware.Recover())
+	jwtConfig := echojwt.Config{
+		NewClaimsFunc: newClaims,
+		Skipper:       skipAuthentication,
+		SigningKey:    service.JWTSecret,
+	}
+
+	e.Use(
+		middleware.Recover(),
+		echojwt.WithConfig(jwtConfig),
+	)
 
 	lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -139,4 +156,16 @@ func newEcho(config *HTTPServerConfig) (*echo.Echo, error) {
 	e.Listener = listener
 
 	return e, nil
+}
+
+func newClaims(c echo.Context) jwt.Claims {
+	return new(service.JWTCustomClaims)
+}
+func skipAuthentication(c echo.Context) bool {
+	for _, path := range unauthenticatedPaths {
+		if path == c.Path() {
+			return true
+		}
+	}
+	return false
 }

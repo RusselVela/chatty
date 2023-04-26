@@ -16,6 +16,10 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+const (
+	JwtAuthScopes = "jwtAuth.Scopes"
+)
+
 // FailedSchema defines model for FailedSchema.
 type FailedSchema struct {
 	Error string `json:"error"`
@@ -33,12 +37,6 @@ type LoginSchema struct {
 	Username string `json:"username"`
 }
 
-// PostMessageSchema defines model for PostMessageSchema.
-type PostMessageSchema struct {
-	Message   string `json:"message"`
-	Recipient string `json:"recipient"`
-}
-
 // SignUpSchema defines model for SignUpSchema.
 type SignUpSchema = LoginSchema
 
@@ -48,14 +46,6 @@ type SuccessLoginSchema struct {
 	Token string `json:"token"`
 }
 
-// SuccessPostMessageSchema defines model for SuccessPostMessageSchema.
-type SuccessPostMessageSchema struct {
-	Message   string `json:"message"`
-	Ok        bool   `json:"ok"`
-	Recipient string `json:"recipient"`
-	Timestamp string `json:"timestamp"`
-}
-
 // SuccessSignupSchema defines model for SuccessSignupSchema.
 type SuccessSignupSchema struct {
 	Id       string `json:"id"`
@@ -63,23 +53,37 @@ type SuccessSignupSchema struct {
 	Username string `json:"username"`
 }
 
+// SuccessWsConnectionSchema defines model for SuccessWsConnectionSchema.
+type SuccessWsConnectionSchema struct {
+	Ok        bool   `json:"ok"`
+	Timestamp string `json:"timestamp"`
+}
+
+// UnauthorizedSchema defines model for UnauthorizedSchema.
+type UnauthorizedSchema struct {
+	Message string `json:"message"`
+}
+
 // N200SuccessfulLogin defines model for 200SuccessfulLogin.
 type N200SuccessfulLogin = SuccessLoginSchema
 
-// N200SuccessfulPostMessage defines model for 200SuccessfulPostMessage.
-type N200SuccessfulPostMessage = SuccessPostMessageSchema
+// N200SuccessfulWsConnection defines model for 200SuccessfulWsConnection.
+type N200SuccessfulWsConnection = SuccessWsConnectionSchema
 
 // N201SuccessfulSignUp defines model for 201SuccessfulSignUp.
 type N201SuccessfulSignUp = SuccessSignupSchema
 
-// N400FailedPostMessage defines model for 400FailedPostMessage.
-type N400FailedPostMessage = FailedSchema
-
 // N400FailedSignUp defines model for 400FailedSignUp.
 type N400FailedSignUp = FailedSchema
 
+// N400FailedWsConnection defines model for 400FailedWsConnection.
+type N400FailedWsConnection = FailedSchema
+
 // N401FailedLogin defines model for 401FailedLogin.
 type N401FailedLogin = FailedSchema
+
+// N401UnauthorizedError defines model for 401UnauthorizedError.
+type N401UnauthorizedError = UnauthorizedSchema
 
 // N500InternalServerError defines model for 500InternalServerError.
 type N500InternalServerError = InternalServerErrorSchema
@@ -87,32 +91,26 @@ type N500InternalServerError = InternalServerErrorSchema
 // LoginRequest defines model for LoginRequest.
 type LoginRequest = LoginSchema
 
-// PostMessageRequest defines model for PostMessageRequest.
-type PostMessageRequest = PostMessageSchema
-
 // SignUpRequest defines model for SignUpRequest.
 type SignUpRequest = SignUpSchema
-
-// PublicPostMessageJSONRequestBody defines body for PublicPostMessage for application/json ContentType.
-type PublicPostMessageJSONRequestBody = PostMessageSchema
-
-// PublicPostLoginJSONRequestBody defines body for PublicPostLogin for application/json ContentType.
-type PublicPostLoginJSONRequestBody = LoginSchema
 
 // PublicPostSignupJSONRequestBody defines body for PublicPostSignup for application/json ContentType.
 type PublicPostSignupJSONRequestBody = SignUpSchema
 
+// PublicPostLoginJSONRequestBody defines body for PublicPostLogin for application/json ContentType.
+type PublicPostLoginJSONRequestBody = LoginSchema
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Sends a message to a user or channel
-	// (POST /v1/chatty/chats/postMessage)
-	PublicPostMessage(ctx echo.Context) error
-	// Authenticates a user on Chatty
-	// (POST /v1/chatty/login)
-	PublicPostLogin(ctx echo.Context) error
+	// Connects to Chatty to send and receive messages
+	// (GET /v1/chatty/chats/ws)
+	PublicPostWs(ctx echo.Context) error
 	// Registers a new user
 	// (POST /v1/chatty/signup)
 	PublicPostSignup(ctx echo.Context) error
+	// Returns a token
+	// (POST /v1/chatty/token)
+	PublicPostLogin(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -120,21 +118,14 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
-// PublicPostMessage converts echo context to params.
-func (w *ServerInterfaceWrapper) PublicPostMessage(ctx echo.Context) error {
+// PublicPostWs converts echo context to params.
+func (w *ServerInterfaceWrapper) PublicPostWs(ctx echo.Context) error {
 	var err error
 
-	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PublicPostMessage(ctx)
-	return err
-}
-
-// PublicPostLogin converts echo context to params.
-func (w *ServerInterfaceWrapper) PublicPostLogin(ctx echo.Context) error {
-	var err error
+	ctx.Set(JwtAuthScopes, []string{""})
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PublicPostLogin(ctx)
+	err = w.Handler.PublicPostWs(ctx)
 	return err
 }
 
@@ -144,6 +135,15 @@ func (w *ServerInterfaceWrapper) PublicPostSignup(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshalled arguments
 	err = w.Handler.PublicPostSignup(ctx)
+	return err
+}
+
+// PublicPostLogin converts echo context to params.
+func (w *ServerInterfaceWrapper) PublicPostLogin(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PublicPostLogin(ctx)
 	return err
 }
 
@@ -175,33 +175,33 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.POST(baseURL+"/v1/chatty/chats/postMessage", wrapper.PublicPostMessage)
-	router.POST(baseURL+"/v1/chatty/login", wrapper.PublicPostLogin)
+	router.GET(baseURL+"/v1/chatty/chats/ws", wrapper.PublicPostWs)
 	router.POST(baseURL+"/v1/chatty/signup", wrapper.PublicPostSignup)
+	router.POST(baseURL+"/v1/chatty/token", wrapper.PublicPostLogin)
 
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/7RXwW7jNhD9FYIt0IsQ2e32olPTogtksUWDOOkeFj4w0thiliK1HMqBG/jfiyFlS44k",
-	"S9lqT5bF4dObecOZ4QtPTVEaDdohT164ha8VoPvdZBL8i49mK/VdeEv/U6MdaP8oylLJVDhpdPyERtM7",
-	"THMoBD39aGHDE/5D3HwgDqsYe9BVMD0cDhHPAFMrS4LiCb/PgdVEmDNMkTU/RPzWoPsLEMUW5mbUgp7M",
-	"C0FnTDANz6wIW4nkSm71Qzk3v4A6nZrc6qrkZGcBS6MxqPnzYrGq0hQQN5XyKszHMOCOSOuXmUSGJxoU",
-	"tDNeLS3mZjdJ5tqA9HUtnmofmC4bpkGVuUmuvHjD/MJ6N4jvFov3QirIvkcAA/J40LRxIXBZBZSJqZL0",
-	"D6w19ozkzLEb4/eAYD251IJwkA3zWwaoeU/HGL2w3pS6d4vlgxaVy42V/0L2p6eXvLza9eHTPXPmC/gT",
-	"VUhEqbfMWCb1TiiZEdCvi8WNdmC1UCuwO7AnqFn86sEedvJozII1C1TIroajr51FKnnhpTUlWFe3Iziy",
-	"d/sSeMLRWam35Kj50nr9aIwCoesC+LWSFjKefCajqMZYR0dj8/gEqSOMYW8mE3n1weFvtQtlB70UiM/G",
-	"ZvS8MbYQjifNy6jrfYVEvIBxRifLqAHs49ctlR2WRVNjOoQspLKUdX5dZtSYRifIPkZnPZCyVqm/Nzz5",
-	"/IZZY00w3UbV8aw/mSLuD9tEUfpSL+zvdW6oQb0p6kO8L6kRcScLQCeKclwr70WfYG2UC/6d9baOazJ7",
-	"k1fTk97TbmW+7Mt5qkOQVla6vScYOD09u+vK5fT4CMKCfX+U/sOne16XLk/MrzZ5kDtXhioo9cYcK65I",
-	"vQZQCKl4wnegxJWtEEH9tqV3V6kpeMSDW/zOr7B/QAneKafXtze+g5miqDSVb2BSMwtCMdKCPUuXsxLA",
-	"olfHqVeIPyH7IxfO7RmC3cmUArMDiwF9t/ShL0GLUvKE/3K1uFr4ouFyH5h4t4xTv9//YFyejx30t9uy",
-	"VqAzZOI4MZMDgpEy1LfSXGgNivvvWt+PbjKe8NvqUcm0PdZErZvKfqhJnV1m4p7bQ894PIxV28WDs2qY",
-	"bsYBeue00POnbO4ZDEKfH988MAz4zK+KQtj9dIWc2CIdraANXxNIKyXUcXzqTwM6UqCdz1o84es6IS8k",
-	"QBjLvkH+s4vs/xf+Y2tSm6Rae6qcVa/RUI4oVd8VB6W6g61EBxbruy7hXxAoVPhvUej85tyVaDlFou7t",
-	"7M3Hstk3n0gDQexK45sQoaCfbCpLXUKZVKjcoIupKq9P+15LVXoYdn17g00PqbEP68N/AQAA//+uNzCx",
-	"7REAAA==",
+	"H4sIAAAAAAAC/7RXwW7jNhD9FYIt0IsQ2e32olPTRRfIYosGcdIcAh9oaiwxS5FaDmXDDfzvxZCyLUdS",
+	"7HTdk2Vy+Pg4bzgzfOHSVrU1YDzy7IU7+NYA+t9triAMfLGFMndxlP5LazyY8CnqWispvLImfUZraAxl",
+	"CZWgrx8dLHnGf0gPG6RxFtMAOoum2+024TmgdKomKJ7x+xJYS4R5yzRZ823CZ6owD/WlyUTUs9mgKkxT",
+	"c7JzgLU1GB3182Qya6QExGWjwwEvxzDinvBamGYKGe5pkNOOeD3iR2sMyLjksvS62OMs/wREUQBDML7D",
+	"VG8i1+mBa9Tl0ixnQb5xfnG+78YPk8knoTTkF6bVgo7yeUBwzFjPpAPhIWd5AxSGUivyIDhn3RG//0Xi",
+	"Uyx3qhLRoOwoy2mEuuwFOUUvzh8SyYfJ9MGIxpfWqX8g/yPQuxSZLvI4pc+P98zbrxBubKUQlSmYdUyZ",
+	"ldAqJ5a/TiY3xoMzQs/ArcBdlucA9jjdnTGL1ixSIbsWjnY7kiF74bWzNTjfVhLYsfebGnjG0TtlCjqo",
+	"/doZXlirQZg2wX5rlIOcZ09klLQY82RnbBfPID1hjJ/mbCKvNhzfq5uIe+i1QFxbl9P30rpKeJ4dBpP+",
+	"6Rsk4hWcZrS3TA6AQ/yOKhrFiNZ/LXn29I6iPCeYftnpnXZYuoSH0D7TBUNCx/WDhxvI4z1aKn9HoL1H",
+	"gkCuo4PK3yI5UBLP96CqAL2o6jNJHeyHCA0kpR6TKibx0/vtDPsbUT4A2TjlN2GXCPy89teNL+lzAcKB",
+	"+7QLis+P97xNIeH4YfYQIaX3dcxGyiztLvMJGTIfVEJpnvEVaHHlGkTQvxU0diVtxRMeBeV3YYb9DVrw",
+	"Xlq7vr0JZcpWVWMojQJThjkQmpE/2Vr5ktUADoOHvX6F+BOyj6XwfsMQ3EpJCokVOIzoq2kIuhqMqBXP",
+	"+C9Xk6tJuLy+DI5JV9NUhvXhB9N1GC4gHPCYahtJSHzjnjxgu5D7b3Ke8dtmoZW8tegfie/r9nSsIOzt",
+	"0vFeMXYYpxGG25BYcs9ZPVCXYyU8vXikXHZjMuTAfTQ+zbfzhGNTVcJtBj0c+n0wORMmZw4kqBWwNvpD",
+	"RIgC6UJEx/M57dXRtH0q0EWzOCDpHRQKPThkghlYM8orb4gaUx5POo+0zbhbOu+49Pjh1H+5TM8JjX5r",
+	"/u6gOKz7bkX3qo048YQ0+/o0poxvnCHI2KN5yxZA0Dnlh2XjfAmO7YXCN1SLne5/EO3o5b397uv8pdP8",
+	"nnUTu436hRU7cu6gWOHSEgCGO9s4yvTaSqFLiz6lzDrfr3utXh1g2PXtDR7qQIu9nW//DQAA//9mamGZ",
+	"9BAAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

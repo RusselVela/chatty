@@ -1,11 +1,11 @@
 package web
 
 import (
-	"context"
+	"github.com/RusselVela/chatty/internal/app/service"
+	"github.com/golang-jwt/jwt/v4"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"go.uber.org/zap"
 )
 
 //go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --config=oapi-cfg.yaml ../../../api/chatty-service-api.yaml
@@ -17,7 +17,7 @@ var loggerContextKey = loggerContextKeyType{}
 type ChattyService interface {
 	Signup(username string, password string) (string, string, error)
 	Login(username string, password string) (string, error)
-	PostMessage(token string, recipient string, message string) (int64, error)
+	HandleConnections(ctx echo.Context, token string) error
 }
 
 type WebHandler struct {
@@ -77,16 +77,13 @@ func (wh *WebHandler) PublicPostLogin(ctx echo.Context) error {
 	})
 }
 
-func (wh *WebHandler) PublicPostMessage(ctx echo.Context) error {
-	l := L(ctx.Request().Context())
-	l.Info("Posting a new Message")
-	return nil
-}
+func (wh *WebHandler) PublicPostWs(ctx echo.Context) error {
+	user := ctx.Get("user").(*jwt.Token)
+	claims := user.Claims.(*service.JWTCustomClaims)
 
-// L retrieves logger value from context
-func L(ctx context.Context) *zap.Logger {
-	if logger, ok := ctx.Value(loggerContextKey).(*zap.Logger); ok {
-		return logger
+	err := wh.service.HandleConnections(ctx, claims.Username)
+	if err != nil {
+
 	}
 	return nil
 }
