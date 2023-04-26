@@ -8,7 +8,7 @@ metadata:
     type: microservice
 spec:
   rules:
-    - host: localhost
+    - host: {{ .Values.ingress.hostname }}
       http:
         paths:
           - path: /

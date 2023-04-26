@@ -1,24 +1,24 @@
-service:
-  systemPort: 4445
-  internalPort: 4444
-  externalPort: 4444
 image:
   refs:
     chatty_service: latest
   registry: russelvela
   pullPolicy: Always
-replicaCount: 1
+ingress:
+  hostname: localhost
+jwt:
+  secret: mySecret123
 probes:
   liveness:
+    failureThreshold: 3
     initialDelaySeconds: 5
     periodSeconds: 5
-    failureThreshold: 3
     timeoutSeconds: 5
   readiness:
+    failureThreshold: 3
     initialDelaySeconds: 5
     periodSeconds: 5
-    failureThreshold: 3
     timeoutSeconds: 5
+replicaCount: 1
 resources:
   limits:
     cpu: "2000m"
@@ -26,5 +26,7 @@ resources:
   requests:
     cpu: "1000m"
     memory: "256Mi"
-jwt:
-  secret: mySecret123
+service:
+  internalPort: 4444
+  externalPort: 4444
+  systemPort: 4445
