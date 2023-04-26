@@ -9,7 +9,7 @@ import (
 )
 
 type WsClient struct {
-	user      *inmemory.User
+	user      *inmemory.UserBean
 	wsConn    *websocket.Conn
 	wsHandler *WebsocketHandler
 	ctx       context.Context

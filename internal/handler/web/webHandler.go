@@ -17,6 +17,8 @@ var loggerContextKey = loggerContextKeyType{}
 type ChattyService interface {
 	Signup(username string, password string) (string, string, error)
 	Login(username string, password string) (string, error)
+	CreateChannel(name string, visibility string, owner string) error
+	SubscribeChannel(username string, channelName string) error
 	HandleConnections(ctx echo.Context, token string) error
 }
 
@@ -54,8 +56,8 @@ func (wh *WebHandler) PublicPostSignup(ctx echo.Context) error {
 	})
 }
 
-func (wh *WebHandler) PublicPostLogin(ctx echo.Context) error {
-	request := PublicPostLoginJSONRequestBody{}
+func (wh *WebHandler) PublicPostToken(ctx echo.Context) error {
+	request := PublicPostTokenJSONRequestBody{}
 	if err := ctx.Bind(&request); err != nil {
 		return ctx.JSON(http.StatusBadRequest, N401FailedLogin{
 			Ok:    false,
@@ -77,7 +79,7 @@ func (wh *WebHandler) PublicPostLogin(ctx echo.Context) error {
 	})
 }
 
-func (wh *WebHandler) PublicPostWs(ctx echo.Context) error {
+func (wh *WebHandler) PublicGetWs(ctx echo.Context) error {
 	user := ctx.Get("user").(*jwt.Token)
 	claims := user.Claims.(*service.JWTCustomClaims)
 
@@ -86,4 +88,46 @@ func (wh *WebHandler) PublicPostWs(ctx echo.Context) error {
 
 	}
 	return nil
+}
+
+func (wh *WebHandler) PublicPostChannels(ctx echo.Context) error {
+	user := ctx.Get("user").(*jwt.Token)
+	claims := user.Claims.(*service.JWTCustomClaims)
+
+	request := PublicPostChannelsJSONRequestBody{}
+	if err := ctx.Bind(&request); err != nil {
+		return ctx.JSON(http.StatusBadRequest, N400FailedChannelCreation{
+			Ok:    false,
+			Error: err.Error(),
+		})
+	}
+
+	err := wh.service.CreateChannel(request.Name, request.Type, claims.Username)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, N500InternalServerError{
+			Error: err.Error(),
+		})
+	}
+
+	return ctx.JSON(http.StatusCreated, N201SuccessChannelCreation{
+		Ok:   true,
+		Name: request.Name,
+	})
+}
+
+func (wh *WebHandler) PublicPostChannelsSubscribe(ctx echo.Context, name string) error {
+	user := ctx.Get("user").(*jwt.Token)
+	claims := user.Claims.(*service.JWTCustomClaims)
+
+	err := wh.service.SubscribeChannel(claims.Username, name)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, N500InternalServerError{
+			Error: err.Error(),
+		})
+	}
+
+	return ctx.JSON(http.StatusOK, N200SuccessChannelSubscribe{
+		Ok:   true,
+		Name: name,
+	})
 }

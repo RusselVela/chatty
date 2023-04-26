@@ -15,16 +15,20 @@ func handleMessages() {
 	for {
 		msg := <-broadcaster
 		// Store in redis
-
+		target := msg.Recipient
 		switch msg.Type {
 		case domain.TypeUser:
-			target := msg.Recipient
 			wsClient, found := clients[target]
 			if !found {
 				continue
 			}
 			wsClient.writeMessage(msg)
 		case domain.TypeChannel:
+			channel, found := channelClients[target]
+			if !found {
+				continue
+			}
+			channel.broadcastMessage(msg)
 		}
 	}
 }
