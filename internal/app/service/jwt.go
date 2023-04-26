@@ -24,7 +24,7 @@ func SetupJWTSecret(k *koanf.Koanf) {
 	JWTSecret = []byte(k.String(jwtSecretPath))
 }
 
-func generateJWT(user inmemory.User) (string, error) {
+func generateJWT(user inmemory.UserBean) (string, error) {
 	claims := &JWTCustomClaims{
 		Id:         user.Id,
 		Username:   user.Username,

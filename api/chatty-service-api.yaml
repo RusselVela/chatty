@@ -32,7 +32,7 @@ paths:
     post:
       summary: Returns a token
       description:  Returns a token to be used in further operations
-      operationId: public-post-login
+      operationId: public-post-token
       tags:
         - Public
       requestBody:
@@ -48,7 +48,7 @@ paths:
     get:
       summary: Connects to Chatty to send and receive messages
       description: Connects to Chatty
-      operationId: public-post-ws
+      operationId: public-get-ws
       tags:
         - Public
       responses:
@@ -62,7 +62,45 @@ paths:
           $ref: '#/components/responses/500InternalServerError'
       security:
         - jwtAuth: []
-#  /v1/chatty/channels/subscribe:
+  /v1/chatty/channels:
+    post:
+      summary: Creates a new channel
+      description: Creates a new channel
+      operationId: public-post-channels
+      tags:
+        - Public
+      requestBody:
+        $ref: '#/components/requestBodies/ChannelCreationRequest'
+      responses:
+        201:
+          $ref: '#/components/responses/201SuccessChannelCreation'
+        400:
+          $ref: '#/components/responses/400FailedChannelCreation'
+        500:
+          $ref: '#/components/responses/500InternalServerError'
+  /v1/chatty/channels/{name}/subscribe:
+    parameters:
+      - name: name
+        in: path
+        description: The name of the channel to subscribe
+        required: true
+        schema:
+          type: string
+    post:
+      summary: Subscribe to a channel
+      description: Subscribe the user invoking this operation to the channel specified by {name}
+      operationId: public-post-channels-subscribe
+      tags:
+        - Public
+      requestBody:
+        $ref: "#/components/requestBodies/ChannelSubscriptionRequest"
+      responses:
+        200:
+          $ref: '#/components/responses/200SuccessChannelSubscribe'
+        400:
+          $ref: '#/components/responses/400FailedChannelSubscribe'
+        500:
+          $ref: '#/components/responses/500InternalServerError'
 components:
   requestBodies:
     SignUpRequest:
@@ -77,7 +115,18 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/LoginSchema'
-
+    ChannelSubscriptionRequest:
+      description: The request to subscribe to a new channel
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ChannelSubscription'
+    ChannelCreationRequest:
+      description: The request to create a new channel
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ChannelCreation'
   responses:
     201SuccessfulSignUp:
       description: Signup is successful
@@ -115,6 +164,30 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/FailedSchema'
+    200SuccessChannelSubscribe:
+      description: Subscribed to channel
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SuccessChannelSubscription'
+    400FailedChannelSubscribe:
+      description: Could not subscribe to channel
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/FailedSchema'
+    201SuccessChannelCreation:
+      description: Channel created
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SuccessChannelCreation'
+    400FailedChannelCreation:
+      description: Failed to create channel
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/FailedSchema'
     401UnauthorizedError:
       description: JWT token is missing or invalid
       content:
@@ -126,7 +199,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/InternalServerErrorSchema'
+            $ref: '#/components/schemas/FailedSchema'
 
   schemas:
     SignUpSchema:
@@ -167,16 +240,50 @@ components:
         token:
           type: string
           format: password
-    FailedSchema:
+    ChannelSubscription:
+      type: object
+    SuccessChannelSubscription:
       type: object
       required:
+        - name
         - ok
-        - error
       properties:
+        name:
+          type: string
         ok:
           type: boolean
-        error:
+    ChannelCreation:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
           type: string
+        type:
+          type: string
+    SuccessChannelCreation:
+      type: object
+      required:
+        - name
+        - ok
+      properties:
+        name:
+          type: string
+        ok:
+          type: boolean
+    FailedSchema:
+      type: object
+      description: An error code and message
+      properties:
+        code:
+          type: integer
+          default: 0
+        message:
+          type: string
+      required:
+        - code
+        - message
     SuccessWsConnectionSchema:
       type: object
       required:
@@ -193,13 +300,6 @@ components:
         - message
       properties:
         message:
-          type: string
-    InternalServerErrorSchema:
-      type: object
-      required:
-        - error
-      properties:
-        error:
           type: string
 
   securitySchemes:

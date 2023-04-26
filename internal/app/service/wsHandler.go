@@ -20,8 +20,8 @@ type WebsocketHandler struct {
 }
 
 var (
-	errConnectionAlreadyExists = &domain.ErrorCode{Code: 103, Message: "a connection already exists"}
-	errUpgradingWebsocket      = &domain.ErrorCode{Code: 109, Message: "failed to upgrade to a websocket connection: %s"}
+	errConnectionAlreadyExists = &domain.ErrorCode{Code: 101, Message: "a connection already exists"}
+	errUpgradingWebsocket      = &domain.ErrorCode{Code: 102, Message: "failed to upgrade to a websocket connection: %s"}
 )
 var wsHandler *WebsocketHandler
 

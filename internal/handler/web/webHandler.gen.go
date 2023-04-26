@@ -8,10 +8,12 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"net/url"
 	"path"
 	"strings"
 
+	"github.com/deepmap/oapi-codegen/pkg/runtime"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
 )
@@ -20,15 +22,19 @@ const (
 	JwtAuthScopes = "jwtAuth.Scopes"
 )
 
-// FailedSchema defines model for FailedSchema.
-type FailedSchema struct {
-	Error string `json:"error"`
-	Ok    bool   `json:"ok"`
+// ChannelCreation defines model for ChannelCreation.
+type ChannelCreation struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
-// InternalServerErrorSchema defines model for InternalServerErrorSchema.
-type InternalServerErrorSchema struct {
-	Error string `json:"error"`
+// ChannelSubscription defines model for ChannelSubscription.
+type ChannelSubscription = map[string]interface{}
+
+// FailedSchema An error code and message
+type FailedSchema struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
 // LoginSchema defines model for LoginSchema.
@@ -39,6 +45,18 @@ type LoginSchema struct {
 
 // SignUpSchema defines model for SignUpSchema.
 type SignUpSchema = LoginSchema
+
+// SuccessChannelCreation defines model for SuccessChannelCreation.
+type SuccessChannelCreation struct {
+	Name string `json:"name"`
+	Ok   bool   `json:"ok"`
+}
+
+// SuccessChannelSubscription defines model for SuccessChannelSubscription.
+type SuccessChannelSubscription struct {
+	Name string `json:"name"`
+	Ok   bool   `json:"ok"`
+}
 
 // SuccessLoginSchema defines model for SuccessLoginSchema.
 type SuccessLoginSchema struct {
@@ -64,29 +82,47 @@ type UnauthorizedSchema struct {
 	Message string `json:"message"`
 }
 
+// N200SuccessChannelSubscribe defines model for 200SuccessChannelSubscribe.
+type N200SuccessChannelSubscribe = SuccessChannelSubscription
+
 // N200SuccessfulLogin defines model for 200SuccessfulLogin.
 type N200SuccessfulLogin = SuccessLoginSchema
 
 // N200SuccessfulWsConnection defines model for 200SuccessfulWsConnection.
 type N200SuccessfulWsConnection = SuccessWsConnectionSchema
 
+// N201SuccessChannelCreation defines model for 201SuccessChannelCreation.
+type N201SuccessChannelCreation = SuccessChannelCreation
+
 // N201SuccessfulSignUp defines model for 201SuccessfulSignUp.
 type N201SuccessfulSignUp = SuccessSignupSchema
 
-// N400FailedSignUp defines model for 400FailedSignUp.
+// N400FailedChannelCreation An error code and message
+type N400FailedChannelCreation = FailedSchema
+
+// N400FailedChannelSubscribe An error code and message
+type N400FailedChannelSubscribe = FailedSchema
+
+// N400FailedSignUp An error code and message
 type N400FailedSignUp = FailedSchema
 
-// N400FailedWsConnection defines model for 400FailedWsConnection.
+// N400FailedWsConnection An error code and message
 type N400FailedWsConnection = FailedSchema
 
-// N401FailedLogin defines model for 401FailedLogin.
+// N401FailedLogin An error code and message
 type N401FailedLogin = FailedSchema
 
 // N401UnauthorizedError defines model for 401UnauthorizedError.
 type N401UnauthorizedError = UnauthorizedSchema
 
-// N500InternalServerError defines model for 500InternalServerError.
-type N500InternalServerError = InternalServerErrorSchema
+// N500InternalServerError An error code and message
+type N500InternalServerError = FailedSchema
+
+// ChannelCreationRequest defines model for ChannelCreationRequest.
+type ChannelCreationRequest = ChannelCreation
+
+// ChannelSubscriptionRequest defines model for ChannelSubscriptionRequest.
+type ChannelSubscriptionRequest = ChannelSubscription
 
 // LoginRequest defines model for LoginRequest.
 type LoginRequest = LoginSchema
@@ -94,23 +130,35 @@ type LoginRequest = LoginSchema
 // SignUpRequest defines model for SignUpRequest.
 type SignUpRequest = SignUpSchema
 
+// PublicPostChannelsJSONRequestBody defines body for PublicPostChannels for application/json ContentType.
+type PublicPostChannelsJSONRequestBody = ChannelCreation
+
+// PublicPostChannelsSubscribeJSONRequestBody defines body for PublicPostChannelsSubscribe for application/json ContentType.
+type PublicPostChannelsSubscribeJSONRequestBody = ChannelSubscription
+
 // PublicPostSignupJSONRequestBody defines body for PublicPostSignup for application/json ContentType.
 type PublicPostSignupJSONRequestBody = SignUpSchema
 
-// PublicPostLoginJSONRequestBody defines body for PublicPostLogin for application/json ContentType.
-type PublicPostLoginJSONRequestBody = LoginSchema
+// PublicPostTokenJSONRequestBody defines body for PublicPostToken for application/json ContentType.
+type PublicPostTokenJSONRequestBody = LoginSchema
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Creates a new channel
+	// (POST /v1/chatty/channels)
+	PublicPostChannels(ctx echo.Context) error
+	// Subscribe to a channel
+	// (POST /v1/chatty/channels/{name}/subscribe)
+	PublicPostChannelsSubscribe(ctx echo.Context, name string) error
 	// Connects to Chatty to send and receive messages
 	// (GET /v1/chatty/chats/ws)
-	PublicPostWs(ctx echo.Context) error
+	PublicGetWs(ctx echo.Context) error
 	// Registers a new user
 	// (POST /v1/chatty/signup)
 	PublicPostSignup(ctx echo.Context) error
 	// Returns a token
 	// (POST /v1/chatty/token)
-	PublicPostLogin(ctx echo.Context) error
+	PublicPostToken(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -118,14 +166,39 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
-// PublicPostWs converts echo context to params.
-func (w *ServerInterfaceWrapper) PublicPostWs(ctx echo.Context) error {
+// PublicPostChannels converts echo context to params.
+func (w *ServerInterfaceWrapper) PublicPostChannels(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PublicPostChannels(ctx)
+	return err
+}
+
+// PublicPostChannelsSubscribe converts echo context to params.
+func (w *ServerInterfaceWrapper) PublicPostChannelsSubscribe(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "name" -------------
+	var name string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PublicPostChannelsSubscribe(ctx, name)
+	return err
+}
+
+// PublicGetWs converts echo context to params.
+func (w *ServerInterfaceWrapper) PublicGetWs(ctx echo.Context) error {
 	var err error
 
 	ctx.Set(JwtAuthScopes, []string{""})
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PublicPostWs(ctx)
+	err = w.Handler.PublicGetWs(ctx)
 	return err
 }
 
@@ -138,12 +211,12 @@ func (w *ServerInterfaceWrapper) PublicPostSignup(ctx echo.Context) error {
 	return err
 }
 
-// PublicPostLogin converts echo context to params.
-func (w *ServerInterfaceWrapper) PublicPostLogin(ctx echo.Context) error {
+// PublicPostToken converts echo context to params.
+func (w *ServerInterfaceWrapper) PublicPostToken(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PublicPostLogin(ctx)
+	err = w.Handler.PublicPostToken(ctx)
 	return err
 }
 
@@ -175,33 +248,40 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.GET(baseURL+"/v1/chatty/chats/ws", wrapper.PublicPostWs)
+	router.POST(baseURL+"/v1/chatty/channels", wrapper.PublicPostChannels)
+	router.POST(baseURL+"/v1/chatty/channels/:name/subscribe", wrapper.PublicPostChannelsSubscribe)
+	router.GET(baseURL+"/v1/chatty/chats/ws", wrapper.PublicGetWs)
 	router.POST(baseURL+"/v1/chatty/signup", wrapper.PublicPostSignup)
-	router.POST(baseURL+"/v1/chatty/token", wrapper.PublicPostLogin)
+	router.POST(baseURL+"/v1/chatty/token", wrapper.PublicPostToken)
 
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/7RXwW7jNhD9FYIt0IsQ2e32olPTRRfIYosGcdIcAh9oaiwxS5FaDmXDDfzvxZCyLUdS",
-	"7HTdk2Vy+Pg4bzgzfOHSVrU1YDzy7IU7+NYA+t9triAMfLGFMndxlP5LazyY8CnqWispvLImfUZraAxl",
-	"CZWgrx8dLHnGf0gPG6RxFtMAOoum2+024TmgdKomKJ7x+xJYS4R5yzRZ823CZ6owD/WlyUTUs9mgKkxT",
-	"c7JzgLU1GB3182Qya6QExGWjwwEvxzDinvBamGYKGe5pkNOOeD3iR2sMyLjksvS62OMs/wREUQBDML7D",
-	"VG8i1+mBa9Tl0ixnQb5xfnG+78YPk8knoTTkF6bVgo7yeUBwzFjPpAPhIWd5AxSGUivyIDhn3RG//0Xi",
-	"Uyx3qhLRoOwoy2mEuuwFOUUvzh8SyYfJ9MGIxpfWqX8g/yPQuxSZLvI4pc+P98zbrxBubKUQlSmYdUyZ",
-	"ldAqJ5a/TiY3xoMzQs/ArcBdlucA9jjdnTGL1ixSIbsWjnY7kiF74bWzNTjfVhLYsfebGnjG0TtlCjqo",
-	"/doZXlirQZg2wX5rlIOcZ09klLQY82RnbBfPID1hjJ/mbCKvNhzfq5uIe+i1QFxbl9P30rpKeJ4dBpP+",
-	"6Rsk4hWcZrS3TA6AQ/yOKhrFiNZ/LXn29I6iPCeYftnpnXZYuoSH0D7TBUNCx/WDhxvI4z1aKn9HoL1H",
-	"gkCuo4PK3yI5UBLP96CqAL2o6jNJHeyHCA0kpR6TKibx0/vtDPsbUT4A2TjlN2GXCPy89teNL+lzAcKB",
-	"+7QLis+P97xNIeH4YfYQIaX3dcxGyiztLvMJGTIfVEJpnvEVaHHlGkTQvxU0diVtxRMeBeV3YYb9DVrw",
-	"Xlq7vr0JZcpWVWMojQJThjkQmpE/2Vr5ktUADoOHvX6F+BOyj6XwfsMQ3EpJCokVOIzoq2kIuhqMqBXP",
-	"+C9Xk6tJuLy+DI5JV9NUhvXhB9N1GC4gHPCYahtJSHzjnjxgu5D7b3Ke8dtmoZW8tegfie/r9nSsIOzt",
-	"0vFeMXYYpxGG25BYcs9ZPVCXYyU8vXikXHZjMuTAfTQ+zbfzhGNTVcJtBj0c+n0wORMmZw4kqBWwNvpD",
-	"RIgC6UJEx/M57dXRtH0q0EWzOCDpHRQKPThkghlYM8orb4gaUx5POo+0zbhbOu+49Pjh1H+5TM8JjX5r",
-	"/u6gOKz7bkX3qo048YQ0+/o0poxvnCHI2KN5yxZA0Dnlh2XjfAmO7YXCN1SLne5/EO3o5b397uv8pdP8",
-	"nnUTu436hRU7cu6gWOHSEgCGO9s4yvTaSqFLiz6lzDrfr3utXh1g2PXtDR7qQIu9nW//DQAA//9mamGZ",
-	"9BAAAA==",
+	"H4sIAAAAAAAC/8RYzW7jNhB+FYIt0IsR2e32olNTo1tksUWDOGkOgQ+0NLaYUKSWQzlwA797QVLWjyXZ",
+	"clZBb7bIGX6c+eaH80YjlWZKgjRIwzeq4VsOaH5XMQf3YZ4wKUHMNTDDlbzz63YlUtKAdD9ZlgkeuQ3B",
+	"Myppv2GUQMrsrx81rGlIfwiqowK/isGRerrf7yc0Bow0z9yHkN4nQApYxCgS2a1AGJHwSiIvTveTA9BF",
+	"viqFPwhs/YgBgNFvX4H904L9VW346ECd0oXfeh6gsLstlgXfyIdsbDBe62A0yDcyz6jdpwEzJdET8efp",
+	"dJFHESA23bCC8ZB26e91c3l+7GhZubRCus6Fc8XYCM/41y0TjgRLGC1cjzhXUkLkRcaFV9fdj/IvQGQb",
+	"IAjS1JCKncc6a3qjzBAf4+xTCajYUmSeuAlvnQtP8LGBLVwc9JvPr7e9/Gk6/cy4gPijDOe19wPz67VU",
+	"XQuNY3Djx/A5dHOVi5hIZZp5uQvjyH49h+wBQTtgBc9InHtogtsIAa2VbuD7kBA+h/IQtc6CFlcvyplX",
+	"NW4CHEi+sqR9ms4eJMtNojT/F+I/HLyxwNQ190P68nhPjHoBl5FTjsjlhihNuNwywV06+XU6vZEGtGRi",
+	"AXoLelyc54x2OJv4w4k/3e4rNHQ0gvZTplUG2hSdomSpC2Ozy4CGFI3mcmNv5z+0FlyB/5ZzDTENn7x4",
+	"sXl5EKJq9QyR6envakqrfY3Lhm9HV72WnqIkUjEQJmOSekLTydF17AYvv2a5MDSclqC4NLABR/OD9Nnr",
+	"OXXV/q4b1qt6y7oZQ3xVOra/10qnzNCw+jhpWz1H69N0ALRy56RS2IWv0chZQgrx95qGTxf0okurpreu",
+	"D+STeql9XiklgMk+OqmX7qv0d3r/B46Tnu8+ZkJdThlIhyNQ6oUe5E+ganQgLVg8vsAol9DRgatxksen",
+	"QHb0msMtyFNAw9JsIKhqfxegjmrQQjI4XfTnCZuVIco1Nzt3ilf8/Gquc5PYnytgGvTnAym+PN7TIpG7",
+	"67vViiGJMZmvCVyu1aHksMiVHEgZFzSkWxDsSueIIH7b2G9XkUrppAgNeudWyD8gGG0Vl+vbG9cfqDTN",
+	"pa1fQLgkGpgg1p7klZuEZAAanYWNONL4E5J5wozZEQS95ZGlxBY0eu3bmSNdBpJlnIb0l6vp1dQlMpM4",
+	"wwTbWRA5+aDo8Xw6Vf6Fe9Qcus4Lj17pTr92WeompiG9zVeCR7cKzfygcVIbnOz6ynFjthL0DFbaz95Z",
+	"v75iX9D/WvL94nkNva8G352cV9DTwji65mnK9O6EfQ3boGW9tyxdWqkOxwVvlnD7AOuvhoxploKx/LGl",
+	"qD1bsDJErYlJyqdIYyxjU4x02dMkFaeL5FPFpNE5TGoN13H8Lic9pFpU74wEiE1stvVTL7YNNAlHUrLL",
+	"wqqjxAwivuYQk9WO+LsPIOOidrH3srJritYxkBnCzN6pzXup2dAwHjcXzTHdJeQ0GLw6k2ygK6n4+oRW",
+	"r89kPU78E8yjTyXvt/LxZOdiI7elZ0OkO15ZY3inKHQusssS97S0wVbLKi0Du/gGGbsGX0MEfAuHRh/P",
+	"u7QYQfaWiTvYcLQZp0hkNqZPBKbvo94Tjc2B7HeWhmpSdTEpKrnx4q3HiGdcUza9fZ4xuZZWpX9xG0VW",
+	"LufGtulY59okoKuEiye8du9OeofTGhP9/XeH89faKGNQJNbHLiN7rGHcTme5oLUKfDXOtW0fhYqYSBSa",
+	"wLZry1Lu2HuZU0Oub2+wKsSF7v1y/18AAAD//4D/uY+sGgAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

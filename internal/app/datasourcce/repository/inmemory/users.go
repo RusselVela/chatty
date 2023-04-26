@@ -5,32 +5,33 @@ import (
 	"github.com/google/uuid"
 )
 
-type User struct {
-	Id       string
-	Username string
-	Password string
+type UserBean struct {
+	Id            string
+	Username      string
+	Password      string
+	Subscriptions []string
 }
 
-type usersTable map[string]*User
+type usersTable map[string]*UserBean
 
 var Users usersTable
 
-func (u usersTable) NewUser(username string, password string) (error, *User) {
+func (u usersTable) NewUser(username string, password string) (*UserBean, error) {
 	if user := u[username]; user != nil {
-		return fmt.Errorf("user %s already exists", username), nil
+		return nil, fmt.Errorf("user %s already exists", username)
 	}
 
 	id := uuid.New().String()
-	user := User{
+	user := &UserBean{
 		Id:       id,
 		Username: username,
 		Password: password,
 	}
-	u[username] = &user
+	u[username] = user
 
-	return nil, &user
+	return user, nil
 }
 
-func (u usersTable) Get(username string) *User {
+func (u usersTable) Get(username string) *UserBean {
 	return u[username]
 }

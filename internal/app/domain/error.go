@@ -1,12 +1,19 @@
 package domain
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // ErrorCode represents error information occurring while processing a request
 type ErrorCode struct {
+	Status  int
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Args    []any  `json:"args"`
+}
+
+func (ec *ErrorCode) Error() string {
+	return ec.String()
 }
 
 // Clone will return a copy of the ErrorCode with the same Code and Message.  The caller args will be used instead of Args if supplied.
