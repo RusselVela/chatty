@@ -25,7 +25,7 @@ paths:
         201:
           $ref: '#/components/responses/201SuccessfulSignUp'
         400:
-          $ref: '#/components/responses/400FailedSignUp'
+          $ref: '#/components/responses/400BadRequest'
         500:
           $ref: '#/components/responses/500InternalServerError'
   /v1/chatty/token:
@@ -41,7 +41,7 @@ paths:
         200:
           $ref: '#/components/responses/200SuccessfulLogin'
         401:
-          $ref: '#/components/responses/401FailedLogin'
+          $ref: '#/components/responses/400BadRequest'
         500:
           $ref: '#/components/responses/500InternalServerError'
   /v1/chatty/chats/ws:
@@ -55,7 +55,7 @@ paths:
         200:
           $ref: '#/components/responses/200SuccessfulWsConnection'
         400:
-          $ref: '#/components/responses/400FailedWsConnection'
+          $ref: '#/components/responses/400BadRequest'
         401:
           $ref: '#/components/responses/401UnauthorizedError'
         500:
@@ -75,7 +75,7 @@ paths:
         201:
           $ref: '#/components/responses/201SuccessChannelCreation'
         400:
-          $ref: '#/components/responses/400FailedChannelCreation'
+          $ref: '#/components/responses/400BadRequest'
         500:
           $ref: '#/components/responses/500InternalServerError'
   /v1/chatty/channels/{name}/subscribe:
@@ -98,7 +98,7 @@ paths:
         200:
           $ref: '#/components/responses/200SuccessChannelSubscribe'
         400:
-          $ref: '#/components/responses/400FailedChannelSubscribe'
+          $ref: '#/components/responses/400BadRequest'
         500:
           $ref: '#/components/responses/500InternalServerError'
 components:
@@ -134,60 +134,36 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/SuccessSignupSchema'
-    400FailedSignUp:
-      description: User not created due to client error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/FailedSchema'
     200SuccessfulLogin:
       description: Login is successful
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/SuccessLoginSchema'
-    401FailedLogin:
-      description: Failed login
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/FailedSchema'
     200SuccessfulWsConnection:
       description: Message sent successfully
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/SuccessWsConnectionSchema'
-    400FailedWsConnection:
-      description: Message not sent due to client error
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/FailedSchema'
     200SuccessChannelSubscribe:
       description: Subscribed to channel
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/SuccessChannelSubscription'
-    400FailedChannelSubscribe:
-      description: Could not subscribe to channel
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/FailedSchema'
     201SuccessChannelCreation:
       description: Channel created
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/SuccessChannelCreation'
-    400FailedChannelCreation:
-      description: Failed to create channel
+    400BadRequest:
+      description: Bad Request
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/FailedSchema'
+            $ref: '#/components/schemas/ErrorMessage'
     401UnauthorizedError:
       description: JWT token is missing or invalid
       content:
@@ -199,8 +175,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/FailedSchema'
-
+            $ref: '#/components/schemas/ErrorMessage'
   schemas:
     SignUpSchema:
       allOf:
@@ -272,18 +247,6 @@ components:
           type: string
         ok:
           type: boolean
-    FailedSchema:
-      type: object
-      description: An error code and message
-      properties:
-        code:
-          type: integer
-          default: 0
-        message:
-          type: string
-      required:
-        - code
-        - message
     SuccessWsConnectionSchema:
       type: object
       required:
@@ -294,6 +257,17 @@ components:
           type: boolean
         timestamp:
           type: string
+    ErrorMessage:
+      type: object
+      properties:
+        code:
+          type: integer
+          default: 0
+        message:
+          type: string
+      required:
+        - code
+        - message
     UnauthorizedSchema:
       type: object
       required:

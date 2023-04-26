@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"github.com/RusselVela/chatty/internal/app/domain"
 	"github.com/gorilla/websocket"
 	"github.com/knadh/koanf"
 	"github.com/labstack/echo/v4"
@@ -20,8 +19,8 @@ type WebsocketHandler struct {
 }
 
 var (
-	errConnectionAlreadyExists = &domain.ErrorCode{Code: 101, Message: "a connection already exists"}
-	errUpgradingWebsocket      = &domain.ErrorCode{Code: 102, Message: "failed to upgrade to a websocket connection: %s"}
+	errConnectionAlreadyExists = &ErrorCode{Status: http.StatusConflict, Code: 101, Message: "a connection already exists"}
+	errUpgradingWebsocket      = &ErrorCode{Status: http.StatusPreconditionFailed, Code: 102, Message: "failed to upgrade to a websocket connection: %s"}
 )
 var wsHandler *WebsocketHandler
 
@@ -55,14 +54,14 @@ func NewWebsocketHandler(k *koanf.Koanf) *WebsocketHandler {
 }
 
 // UpgradeConnection will upgrade an existing connection for the supplied websocket client.
-func (wh *WebsocketHandler) UpgradeConnection(ctx echo.Context, wsClient *WsClient) error {
+func (wh *WebsocketHandler) UpgradeConnection(ctx echo.Context, wsClient *UserClient) error {
 	if wsClient.wsConn != nil {
-		return ctx.JSON(http.StatusConflict, errConnectionAlreadyExists)
+		return errConnectionAlreadyExists.Clone()
 	}
 
 	wsConn, err := wsHandler.wsUpgrader.Upgrade(ctx.Response(), ctx.Request(), nil)
 	if err != nil {
-		return ctx.JSON(http.StatusPreconditionFailed, errUpgradingWebsocket.Clone(err.Error()))
+		return errUpgradingWebsocket.Clone(err.Error())
 	}
 	wsClient.ctx, wsClient.cancel = context.WithCancel(context.Background())
 	wsClient.wsConn = wsConn

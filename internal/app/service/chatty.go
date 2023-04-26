@@ -3,23 +3,21 @@ package service
 import (
 	"fmt"
 	"github.com/RusselVela/chatty/internal/app/datasourcce/repository/inmemory"
-	"github.com/RusselVela/chatty/internal/app/domain"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
+	"net/http"
 )
 
 var (
-	errUserExists         = &domain.ErrorCode{Code: 201, Message: "a User already exists with the given name"}
-	errUserNotExist       = &domain.ErrorCode{Code: 202, Message: "the specified User does not exist"}
-	errInvalidCredentials = &domain.ErrorCode{Code: 203, Message: "invalid credentials"}
-	errTokenGeneration    = &domain.ErrorCode{Code: 204, Message: "error generating JWT token"}
-
-	errChannelExists         = &domain.ErrorCode{Code: 301, Message: "a Channel already exists with the given name"}
-	errChannelNotExist       = &domain.ErrorCode{Code: 302, Message: "the specified Channel does not exist"}
-	errChannelCreation       = &domain.ErrorCode{Code: 303, Message: "channel creation failed"}
-	errUserAlreadySubscribed = &domain.ErrorCode{Code: 305, Message: "the User already is a member of the Channel"}
-
-	errUserClientNotExist = &domain.ErrorCode{Code: 401, Message: "the wsClient associated to the user does not exist"}
+	errUserExists            = &ErrorCode{Status: http.StatusBadRequest, Code: 201, Message: "username %s already taken"}
+	errUserNotExist          = &ErrorCode{Status: http.StatusBadRequest, Code: 202, Message: "username %s does not exist"}
+	errInvalidCredentials    = &ErrorCode{Status: http.StatusBadRequest, Code: 203, Message: "invalid credentials"}
+	errTokenGeneration       = &ErrorCode{Status: http.StatusInternalServerError, Code: 204, Message: "error generating JWT token: %s"}
+	errChannelExists         = &ErrorCode{Status: http.StatusBadRequest, Code: 301, Message: "channel %s already exists"}
+	errChannelNotExist       = &ErrorCode{Status: http.StatusBadRequest, Code: 302, Message: "channel %s does not exist"}
+	errChannelCreation       = &ErrorCode{Status: http.StatusBadRequest, Code: 303, Message: "channel creation failed: %s"}
+	errUserAlreadySubscribed = &ErrorCode{Status: http.StatusBadRequest, Code: 305, Message: "user %s already is a member of channel %s"}
+	errUserClientNotExist    = &ErrorCode{Status: http.StatusInternalServerError, Code: 401, Message: "the client associated to user %s does not exist"}
 )
 
 type ChattyService struct {
@@ -32,12 +30,12 @@ func NewChattyService() *ChattyService {
 func (cs *ChattyService) Signup(username string, password string) (string, string, error) {
 	user := inmemory.Users.Get(username)
 	if user != nil {
-		return "", "", errUserExists.Clone()
+		return "", "", errUserExists.Clone(username)
 	}
 
 	user, err := inmemory.Users.NewUser(username, password)
 	if err != nil {
-		return "", "", errUserExists.Clone()
+		return "", "", errUserExists.Clone(username)
 	}
 
 	zap.L().Info("new user created")
@@ -47,7 +45,7 @@ func (cs *ChattyService) Signup(username string, password string) (string, strin
 func (cs *ChattyService) Login(username string, password string) (string, error) {
 	user := inmemory.Users.Get(username)
 	if user == nil || (user.Username != username || user.Password != password) {
-		return "", errInvalidCredentials.Clone()
+		return "", errInvalidCredentials
 	}
 	zap.S().Infof("user login: %s", username)
 
@@ -64,10 +62,10 @@ func (cs *ChattyService) HandleConnections(ctx echo.Context, username string) er
 	if user == nil {
 		msg := "user %s not found"
 		zap.L().Error(fmt.Sprintf(msg, username))
-		return errUserNotExist
+		return errUserNotExist.Clone(username)
 	}
 
-	wsClient := &WsClient{}
+	wsClient := &UserClient{}
 	err := wsHandler.UpgradeConnection(ctx, wsClient)
 	if err != nil {
 		return err
@@ -87,12 +85,12 @@ func (cs *ChattyService) HandleConnections(ctx echo.Context, username string) er
 func (cs *ChattyService) CreateChannel(name string, visibility string, owner string) error {
 	user := inmemory.Users.Get(owner)
 	if user == nil {
-		return errUserNotExist
+		return errUserNotExist.Clone(owner)
 	}
 
 	channel := inmemory.Channels.Get(name)
 	if channel != nil {
-		return errChannelExists.Clone()
+		return errChannelExists.Clone(name)
 	}
 
 	channel, err := inmemory.Channels.NewChannel(name, owner, visibility)
@@ -110,17 +108,17 @@ func (cs *ChattyService) CreateChannel(name string, visibility string, owner str
 func (cs *ChattyService) SubscribeChannel(username string, channelName string) error {
 	channel := inmemory.Channels.Get(channelName)
 	if channel == nil {
-		return errChannelNotExist.Clone()
+		return errChannelNotExist.Clone(channelName)
 	}
 
 	user := inmemory.Users.Get(username)
 	if user == nil {
-		return errUserNotExist
+		return errUserNotExist.Clone(username)
 	}
 
 	if _, found := channel.Members[user.Username]; found {
 		zap.S().Infof("User %s already a member of channel %s", user.Username, channel.Name)
-		return errUserAlreadySubscribed
+		return errUserAlreadySubscribed.Clone(user.Username, channel.Name)
 	}
 
 	channelClient, found := channelClients[channel.Name]

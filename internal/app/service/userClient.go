@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type WsClient struct {
+type UserClient struct {
 	user      *inmemory.UserBean
 	wsConn    *websocket.Conn
 	wsHandler *WebsocketHandler
@@ -16,7 +16,7 @@ type WsClient struct {
 	cancel    context.CancelFunc
 }
 
-func (wsc *WsClient) readMessages() {
+func (wsc *UserClient) readMessages() {
 	defer func() {
 		if err := wsc.wsConn.Close(); err != nil {
 			zap.S().Warnf("ws upgrade: ws connection close error %v", err)
@@ -41,14 +41,14 @@ func (wsc *WsClient) readMessages() {
 	}
 }
 
-func (wsc *WsClient) writeMessage(msg domain.Message) {
+func (wsc *UserClient) writeMessage(msg domain.Message) {
 	err := wsc.wsConn.WriteJSON(msg)
 	if err != nil && !websocket.IsCloseError(err, websocket.CloseGoingAway) {
 		removeClient(wsc.user.Username)
 	}
 }
 
-func (wsc *WsClient) release() {
+func (wsc *UserClient) release() {
 	wsc.ctx = nil
 	wsc.cancel = nil
 	wsc.wsConn = nil
