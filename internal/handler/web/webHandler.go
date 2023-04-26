@@ -1,6 +1,8 @@
 package web
 
 import (
+	"errors"
+	"fmt"
 	"github.com/RusselVela/chatty/internal/app/service"
 	"github.com/golang-jwt/jwt/v4"
 	"net/http"
@@ -9,10 +11,6 @@ import (
 )
 
 //go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --config=oapi-cfg.yaml ../../../api/chatty-service-api.yaml
-
-type loggerContextKeyType struct{}
-
-var loggerContextKey = loggerContextKeyType{}
 
 type ChattyService interface {
 	Signup(username string, password string) (string, string, error)
@@ -35,18 +33,14 @@ func NewWebHandler(service ChattyService) *WebHandler {
 func (wh *WebHandler) PublicPostSignup(ctx echo.Context) error {
 	request := PublicPostSignupJSONRequestBody{}
 	if err := ctx.Bind(&request); err != nil {
-		return ctx.JSON(http.StatusBadRequest, N401FailedLogin{
-			Ok:    false,
-			Error: err.Error(),
-		})
+		status, errMsg := wh.toErrorMessage(err)
+		return ctx.JSON(status, errMsg)
 	}
 
 	id, username, err := wh.service.Signup(request.Username, request.Password)
 	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, N401FailedLogin{
-			Ok:    false,
-			Error: err.Error(),
-		})
+		status, errMsg := wh.toErrorMessage(err)
+		return ctx.JSON(status, errMsg)
 	}
 
 	return ctx.JSON(http.StatusCreated, N201SuccessfulSignUp{
@@ -59,18 +53,14 @@ func (wh *WebHandler) PublicPostSignup(ctx echo.Context) error {
 func (wh *WebHandler) PublicPostToken(ctx echo.Context) error {
 	request := PublicPostTokenJSONRequestBody{}
 	if err := ctx.Bind(&request); err != nil {
-		return ctx.JSON(http.StatusBadRequest, N401FailedLogin{
-			Ok:    false,
-			Error: err.Error(),
-		})
+		status, errMsg := wh.toErrorMessage(err)
+		return ctx.JSON(status, errMsg)
 	}
 
 	token, err := wh.service.Login(request.Username, request.Password)
 	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, N401FailedLogin{
-			Ok:    false,
-			Error: err.Error(),
-		})
+		status, errMsg := wh.toErrorMessage(err)
+		return ctx.JSON(status, errMsg)
 	}
 
 	return ctx.JSON(http.StatusOK, N200SuccessfulLogin{
@@ -85,7 +75,8 @@ func (wh *WebHandler) PublicGetWs(ctx echo.Context) error {
 
 	err := wh.service.HandleConnections(ctx, claims.Username)
 	if err != nil {
-
+		status, errMsg := wh.toErrorMessage(err)
+		return ctx.JSON(status, errMsg)
 	}
 	return nil
 }
@@ -96,17 +87,14 @@ func (wh *WebHandler) PublicPostChannels(ctx echo.Context) error {
 
 	request := PublicPostChannelsJSONRequestBody{}
 	if err := ctx.Bind(&request); err != nil {
-		return ctx.JSON(http.StatusBadRequest, N400FailedChannelCreation{
-			Ok:    false,
-			Error: err.Error(),
-		})
+		status, errMsg := wh.toErrorMessage(err)
+		return ctx.JSON(status, errMsg)
 	}
 
 	err := wh.service.CreateChannel(request.Name, request.Type, claims.Username)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, N500InternalServerError{
-			Error: err.Error(),
-		})
+		status, errMsg := wh.toErrorMessage(err)
+		return ctx.JSON(status, errMsg)
 	}
 
 	return ctx.JSON(http.StatusCreated, N201SuccessChannelCreation{
@@ -121,13 +109,33 @@ func (wh *WebHandler) PublicPostChannelsSubscribe(ctx echo.Context, name string)
 
 	err := wh.service.SubscribeChannel(claims.Username, name)
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, N500InternalServerError{
-			Error: err.Error(),
-		})
+		status, errMsg := wh.toErrorMessage(err)
+		return ctx.JSON(status, errMsg)
 	}
 
 	return ctx.JSON(http.StatusOK, N200SuccessChannelSubscribe{
 		Ok:   true,
 		Name: name,
 	})
+}
+
+func (wh *WebHandler) toErrorMessage(err error) (int, *ErrorMessage) {
+
+	var errorCode *service.ErrorCode
+	errorMessage := &ErrorMessage{}
+
+	if !errors.As(err, &errorCode) {
+		errorMessage.Code = 100
+		errorMessage.Message = err.Error()
+		return http.StatusBadRequest, errorMessage
+	}
+
+	errorMessage.Code = errorCode.Code
+	errorMessage.Message = errorCode.Message
+
+	if len(errorCode.Args) > 0 {
+		errorMessage.Message = fmt.Sprintf(errorCode.Message, errorCode.Args...)
+	}
+
+	return errorCode.Status, errorMessage
 }

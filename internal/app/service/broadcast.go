@@ -4,7 +4,7 @@ import "github.com/RusselVela/chatty/internal/app/domain"
 
 var (
 	broadcaster = make(chan domain.Message)
-	clients     = make(map[string]*WsClient)
+	clients     = make(map[string]*UserClient)
 )
 
 func HandleMessages() {

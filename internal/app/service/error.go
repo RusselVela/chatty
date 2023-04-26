@@ -1,4 +1,4 @@
-package domain
+package service
 
 import (
 	"fmt"
@@ -19,6 +19,7 @@ func (ec *ErrorCode) Error() string {
 // Clone will return a copy of the ErrorCode with the same Code and Message.  The caller args will be used instead of Args if supplied.
 func (ec *ErrorCode) Clone(args ...any) *ErrorCode {
 	ecNew := &ErrorCode{
+		Status:  ec.Status,
 		Code:    ec.Code,
 		Message: ec.Message,
 	}
