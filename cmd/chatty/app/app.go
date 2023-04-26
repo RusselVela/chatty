@@ -30,14 +30,16 @@ func NewWithConfig(cfgPath string) *fx.App {
 		fx.Provide(
 			ConfigureLogger,
 			web.GetSwagger,
-			fx.Annotate(ConfigureHTTPServers, fx.As(new(web.EchoRouter))),
+			fx.Annotate(web.ConfigureHTTPServers, fx.As(new(web.EchoRouter))),
 			fx.Annotate(service.NewChattyService, fx.As(new(web.ChattyService))),
 			fx.Annotate(web.NewWebHandler, fx.As(new(web.ServerInterface))),
 		),
 		fx.Invoke(
+			service.NewWebsocketHandler,
 			service.SetupJWTSecret,
 			inmemory.InitDatabase,
 			web.RegisterHandlers,
+			service.HandleMessages,
 			LogAppStartStop,
 		),
 		fx.WithLogger(ConfigureFxLogger),

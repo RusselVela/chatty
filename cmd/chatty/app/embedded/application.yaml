@@ -13,3 +13,5 @@ http:
       address: ":8080"
   client:
     requestTimeout: 15
+jwt:
+  secret: mySecret123
