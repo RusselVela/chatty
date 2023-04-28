@@ -73,7 +73,7 @@ func (wh *WebHandler) PublicGetWs(ctx echo.Context) error {
 	user := ctx.Get("user").(*jwt.Token)
 	claims := user.Claims.(*service.JWTCustomClaims)
 
-	err := wh.service.HandleConnections(ctx, claims.Username)
+	err := wh.service.HandleConnections(ctx, claims.Id)
 	if err != nil {
 		status, errMsg := wh.toErrorMessage(err)
 		return ctx.JSON(status, errMsg)
@@ -91,7 +91,7 @@ func (wh *WebHandler) PublicPostChannels(ctx echo.Context) error {
 		return ctx.JSON(status, errMsg)
 	}
 
-	err := wh.service.CreateChannel(request.Name, request.Type, claims.Username)
+	err := wh.service.CreateChannel(request.Name, request.Type, claims.Id)
 	if err != nil {
 		status, errMsg := wh.toErrorMessage(err)
 		return ctx.JSON(status, errMsg)
@@ -103,11 +103,11 @@ func (wh *WebHandler) PublicPostChannels(ctx echo.Context) error {
 	})
 }
 
-func (wh *WebHandler) PublicPostChannelsSubscribe(ctx echo.Context, name string) error {
+func (wh *WebHandler) PublicPostChannelsSubscribe(ctx echo.Context, id string) error {
 	user := ctx.Get("user").(*jwt.Token)
 	claims := user.Claims.(*service.JWTCustomClaims)
 
-	err := wh.service.SubscribeChannel(claims.Username, name)
+	err := wh.service.SubscribeChannel(claims.Id, id)
 	if err != nil {
 		status, errMsg := wh.toErrorMessage(err)
 		return ctx.JSON(status, errMsg)
@@ -115,7 +115,7 @@ func (wh *WebHandler) PublicPostChannelsSubscribe(ctx echo.Context, name string)
 
 	return ctx.JSON(http.StatusOK, N200SuccessChannelSubscribe{
 		Ok:   true,
-		Name: name,
+		Name: id,
 	})
 }
 

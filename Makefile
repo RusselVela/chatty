@@ -1,6 +1,7 @@
 # Default TAG when pushing Docker Image to dockerhub
 TAG ?= latest
 CONTAINER_REGISTRY	?= russelvela
+KUBE_NS ?= default
 
 # Use source makefile directory as image name
 image_name:=$(notdir $(CURDIR))
@@ -80,7 +81,7 @@ undeploy-nginx:
 deploy: KUBE_CONTEXT=docker-desktop
 deploy:
 	$(eval chart_name := $(subst -service,,$(notdir $(CURDIR))))
-	helm upgrade --install --namespace default ${chart_name} ./deploy/charts/${chart_name} \
+	helm upgrade --install --namespace ${KUBE_NS} ${chart_name} ./deploy/charts/${chart_name} \
 		--kube-context=${KUBE_CONTEXT} \
 		-f ./deploy/charts/${chart_name}/values.yaml \
 		-f ./deploy/charts/${chart_name}/images-lock.yaml

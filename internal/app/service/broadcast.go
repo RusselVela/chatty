@@ -14,8 +14,8 @@ func HandleMessages() {
 func handleMessages() {
 	for {
 		msg := <-broadcaster
-		// Store in redis
-		target := msg.Recipient
+		// TODO: Store in redis
+		target := msg.TargetId
 		switch msg.Type {
 		case domain.TypeUser:
 			wsClient, found := clients[target]
@@ -33,6 +33,6 @@ func handleMessages() {
 	}
 }
 
-func removeClient(username string) {
-	delete(clients, username)
+func removeClient(id string) {
+	delete(clients, id)
 }

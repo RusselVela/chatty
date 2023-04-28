@@ -6,7 +6,7 @@ import (
 )
 
 type UserBean struct {
-	Id            string
+	Id            uuid.UUID
 	Username      string
 	Password      string
 	Subscriptions []string
@@ -14,24 +14,34 @@ type UserBean struct {
 
 type usersTable map[string]*UserBean
 
-var Users usersTable
+var users usersTable
+var usersByUsername map[string]string
 
-func (u usersTable) NewUser(username string, password string) (*UserBean, error) {
-	if user := u[username]; user != nil {
+func NewUser(username string, password string) (*UserBean, error) {
+	if userId := usersByUsername[username]; userId != "" {
 		return nil, fmt.Errorf("user %s already exists", username)
 	}
 
-	id := uuid.New().String()
+	id := uuid.New()
 	user := &UserBean{
 		Id:       id,
 		Username: username,
 		Password: password,
 	}
-	u[username] = user
+	users[user.Id.String()] = user
+	usersByUsername[user.Username] = user.Id.String()
 
 	return user, nil
 }
 
-func (u usersTable) Get(username string) *UserBean {
-	return u[username]
+func GetUser(id string) *UserBean {
+	return users[id]
+}
+
+func GetUserByName(username string) *UserBean {
+	id, found := usersByUsername[username]
+	if !found {
+		return nil
+	}
+	return users[id]
 }

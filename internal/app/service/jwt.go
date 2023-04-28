@@ -26,7 +26,7 @@ func SetupJWTSecret(k *koanf.Koanf) {
 
 func generateJWT(user inmemory.UserBean) (string, error) {
 	claims := &JWTCustomClaims{
-		Id:         user.Id,
+		Id:         user.Id.String(),
 		Username:   user.Username,
 		Authorized: true,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -40,6 +40,6 @@ func generateJWT(user inmemory.UserBean) (string, error) {
 		return "", err
 	}
 
-	zap.L().Info(fmt.Sprintf("token generated for user: %s", user.Id))
+	zap.L().Info(fmt.Sprintf("token generated for user: %s", user.Id.String()))
 	return tokenString, nil
 }
