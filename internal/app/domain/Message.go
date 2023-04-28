@@ -8,8 +8,8 @@ const (
 )
 
 type Message struct {
-	Sender    string      `json:"sender,omitempty"`
-	Recipient string      `json:"recipient"`
-	Type      MessageType `json:"type"`
-	Text      string      `json:"text"`
+	SourceId string      `json:"sourceId"`
+	TargetId string      `json:"targetId"`
+	Type     MessageType `json:"type"`
+	Text     string      `json:"text"`
 }

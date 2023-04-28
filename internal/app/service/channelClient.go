@@ -22,7 +22,7 @@ func NewChannelClient(channel *inmemory.ChannelBean) *ChannelClient {
 		Unsubscribe: make(chan *inmemory.UserBean),
 		Broadcaster: make(chan domain.Message),
 	}
-	channelClients[channel.Name] = channelClient
+	channelClients[channel.Id.String()] = channelClient
 
 	return channelClient
 }
@@ -31,13 +31,13 @@ func (cn *ChannelClient) Start() {
 	for {
 		select {
 		case user := <-cn.Subscribe:
-			cn.Channel.Members[user.Username] = user.Username
-			msg := cn.createChannelMessage(fmt.Sprintf("UserBean %s joined the channel", user.Username))
+			cn.Channel.Members[user.Id.String()] = user.Id.String()
+			msg := cn.createChannelMessage(fmt.Sprintf("User %s joined the channel", user.Username))
 			cn.broadcastMessage(msg)
 			break
 		case user := <-cn.Unsubscribe:
-			delete(cn.Channel.Members, user.Username)
-			msg := cn.createChannelMessage(fmt.Sprintf("UserBean %s left the channel", user.Username))
+			delete(cn.Channel.Members, user.Id.String())
+			msg := cn.createChannelMessage(fmt.Sprintf("User %s left the channel", user.Username))
 			cn.broadcastMessage(msg)
 			break
 		case message := <-cn.Broadcaster:
@@ -48,10 +48,10 @@ func (cn *ChannelClient) Start() {
 
 func (cn *ChannelClient) createChannelMessage(message string) domain.Message {
 	msg := domain.Message{
-		Sender:    cn.Channel.Name,
-		Recipient: cn.Channel.Name,
-		Type:      domain.TypeChannel,
-		Text:      message,
+		SourceId: cn.Channel.Id.String(),
+		TargetId: cn.Channel.Id.String(),
+		Type:     domain.TypeChannel,
+		Text:     message,
 	}
 	return msg
 }
@@ -59,8 +59,8 @@ func (cn *ChannelClient) createChannelMessage(message string) domain.Message {
 func (cn *ChannelClient) broadcastMessage(message domain.Message) {
 	//TODO Save to Redis
 
-	for _, user := range cn.Channel.Members {
-		wsClient := clients[user]
+	for _, userId := range cn.Channel.Members {
+		wsClient := clients[userId]
 		if wsClient != nil {
 			wsClient.writeMessage(message)
 		}

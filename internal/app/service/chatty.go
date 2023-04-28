@@ -28,22 +28,22 @@ func NewChattyService() *ChattyService {
 }
 
 func (cs *ChattyService) Signup(username string, password string) (string, string, error) {
-	user := inmemory.Users.Get(username)
+	user := inmemory.GetUserByName(username)
 	if user != nil {
 		return "", "", errUserExists.Clone(username)
 	}
 
-	user, err := inmemory.Users.NewUser(username, password)
+	user, err := inmemory.NewUser(username, password)
 	if err != nil {
 		return "", "", errUserExists.Clone(username)
 	}
 
-	zap.L().Info("new user created")
-	return user.Id, user.Username, nil
+	zap.S().Infof("new user %s created: %s", user.Id.String(), user.Username)
+	return user.Id.String(), user.Username, nil
 }
 
 func (cs *ChattyService) Login(username string, password string) (string, error) {
-	user := inmemory.Users.Get(username)
+	user := inmemory.GetUserByName(username)
 	if user == nil || (user.Username != username || user.Password != password) {
 		return "", errInvalidCredentials
 	}
@@ -57,12 +57,12 @@ func (cs *ChattyService) Login(username string, password string) (string, error)
 	return token, nil
 }
 
-func (cs *ChattyService) HandleConnections(ctx echo.Context, username string) error {
-	user := inmemory.Users.Get(username)
+func (cs *ChattyService) HandleConnections(ctx echo.Context, userId string) error {
+	user := inmemory.GetUser(userId)
 	if user == nil {
 		msg := "user %s not found"
-		zap.L().Error(fmt.Sprintf(msg, username))
-		return errUserNotExist.Clone(username)
+		zap.L().Error(fmt.Sprintf(msg, user.Id.String()))
+		return errUserNotExist.Clone(user.Id.String())
 	}
 
 	wsClient := &UserClient{}
@@ -72,7 +72,7 @@ func (cs *ChattyService) HandleConnections(ctx echo.Context, username string) er
 	}
 	wsClient.user = user
 
-	clients[user.Username] = wsClient
+	clients[user.Id.String()] = wsClient
 
 	wsClient.readMessages()
 
@@ -82,18 +82,18 @@ func (cs *ChattyService) HandleConnections(ctx echo.Context, username string) er
 	return nil
 }
 
-func (cs *ChattyService) CreateChannel(name string, visibility string, owner string) error {
-	user := inmemory.Users.Get(owner)
+func (cs *ChattyService) CreateChannel(name string, visibility string, ownerId string) error {
+	user := inmemory.GetUser(ownerId)
 	if user == nil {
-		return errUserNotExist.Clone(owner)
+		return errUserNotExist.Clone(ownerId)
 	}
 
-	channel := inmemory.Channels.Get(name)
+	channel := inmemory.GetChannelByName(name)
 	if channel != nil {
 		return errChannelExists.Clone(name)
 	}
 
-	channel, err := inmemory.Channels.NewChannel(name, owner, visibility)
+	channel, err := inmemory.NewChannel(name, ownerId, visibility)
 	if err != nil {
 		return errChannelCreation.Clone(err)
 	}
@@ -105,23 +105,23 @@ func (cs *ChattyService) CreateChannel(name string, visibility string, owner str
 	return nil
 }
 
-func (cs *ChattyService) SubscribeChannel(username string, channelName string) error {
-	channel := inmemory.Channels.Get(channelName)
+func (cs *ChattyService) SubscribeChannel(userId string, channelId string) error {
+	channel := inmemory.GetChannel(channelId)
 	if channel == nil {
-		return errChannelNotExist.Clone(channelName)
+		return errChannelNotExist.Clone(channelId)
 	}
 
-	user := inmemory.Users.Get(username)
+	user := inmemory.GetUser(userId)
 	if user == nil {
-		return errUserNotExist.Clone(username)
+		return errUserNotExist.Clone(userId)
 	}
 
-	if _, found := channel.Members[user.Username]; found {
-		zap.S().Infof("User %s already a member of channel %s", user.Username, channel.Name)
+	if _, found := channel.Members[user.Id.String()]; found {
+		zap.S().Infof("User %s already a member of channel %s", user.Id, channel.Id)
 		return errUserAlreadySubscribed.Clone(user.Username, channel.Name)
 	}
 
-	channelClient, found := channelClients[channel.Name]
+	channelClient, found := channelClients[channel.Id.String()]
 	if !found {
 		// Channel client not placed for some reason. Start it
 		channelClient = NewChannelClient(channel)
@@ -130,7 +130,7 @@ func (cs *ChattyService) SubscribeChannel(username string, channelName string) e
 	}
 
 	channelClient.Subscribe <- user
-	user.Subscriptions = append(user.Subscriptions, channel.Name)
+	user.Subscriptions = append(user.Subscriptions, channel.Id.String())
 	zap.S().Infof("User %s joined Channel: %s", user.Username, channel.Name)
 
 	return nil

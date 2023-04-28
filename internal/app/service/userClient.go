@@ -36,7 +36,7 @@ func (wsc *UserClient) readMessages() {
 		}
 		zap.S().Infof("received message: %v", msg)
 
-		msg.Sender = wsc.user.Username
+		msg.SourceId = wsc.user.Id.String()
 		broadcaster <- msg
 	}
 }
@@ -44,7 +44,7 @@ func (wsc *UserClient) readMessages() {
 func (wsc *UserClient) writeMessage(msg domain.Message) {
 	err := wsc.wsConn.WriteJSON(msg)
 	if err != nil && !websocket.IsCloseError(err, websocket.CloseGoingAway) {
-		removeClient(wsc.user.Username)
+		removeClient(wsc.user.Id.String())
 	}
 }
 
@@ -52,5 +52,5 @@ func (wsc *UserClient) release() {
 	wsc.ctx = nil
 	wsc.cancel = nil
 	wsc.wsConn = nil
-	removeClient(wsc.user.Username)
+	removeClient(wsc.user.Id.String())
 }

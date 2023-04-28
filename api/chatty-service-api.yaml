@@ -78,11 +78,11 @@ paths:
           $ref: '#/components/responses/400BadRequest'
         500:
           $ref: '#/components/responses/500InternalServerError'
-  /v1/chatty/channels/{name}/subscribe:
+  /v1/chatty/channels/{id}/subscribe:
     parameters:
-      - name: name
+      - name: id
         in: path
-        description: The name of the channel to subscribe
+        description: The id of the channel to subscribe
         required: true
         schema:
           type: string
