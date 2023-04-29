@@ -9,3 +9,6 @@ data:
         address: ":{{ .Values.service.internalPort }}"
         system:
           address: ":{{ .Values.service.systemPort }}"
+    redis:
+      address: "{{ template "service.name" . }}-redis:{{ .Values.redis.service.externalPort}}"
+      db: {{ .Values.redis.db }}

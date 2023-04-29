@@ -136,8 +136,8 @@ type ServerInterface interface {
 	// (POST /v1/chatty/channels)
 	PublicPostChannels(ctx echo.Context) error
 	// Subscribe to a channel
-	// (POST /v1/chatty/channels/{name}/subscribe)
-	PublicPostChannelsSubscribe(ctx echo.Context, name string) error
+	// (POST /v1/chatty/channels/{id}/subscribe)
+	PublicPostChannelsSubscribe(ctx echo.Context, id string) error
 	// Connects to Chatty to send and receive messages
 	// (GET /v1/chatty/chats/ws)
 	PublicGetWs(ctx echo.Context) error
@@ -166,16 +166,16 @@ func (w *ServerInterfaceWrapper) PublicPostChannels(ctx echo.Context) error {
 // PublicPostChannelsSubscribe converts echo context to params.
 func (w *ServerInterfaceWrapper) PublicPostChannelsSubscribe(ctx echo.Context) error {
 	var err error
-	// ------------- Path parameter "name" -------------
-	var name string
+	// ------------- Path parameter "id" -------------
+	var id string
 
-	err = runtime.BindStyledParameterWithLocation("simple", false, "name", runtime.ParamLocationPath, ctx.Param("name"), &name)
+	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter id: %s", err))
 	}
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.PublicPostChannelsSubscribe(ctx, name)
+	err = w.Handler.PublicPostChannelsSubscribe(ctx, id)
 	return err
 }
 
@@ -237,7 +237,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.POST(baseURL+"/v1/chatty/channels", wrapper.PublicPostChannels)
-	router.POST(baseURL+"/v1/chatty/channels/:name/subscribe", wrapper.PublicPostChannelsSubscribe)
+	router.POST(baseURL+"/v1/chatty/channels/:id/subscribe", wrapper.PublicPostChannelsSubscribe)
 	router.GET(baseURL+"/v1/chatty/chats/ws", wrapper.PublicGetWs)
 	router.POST(baseURL+"/v1/chatty/signup", wrapper.PublicPostSignup)
 	router.POST(baseURL+"/v1/chatty/token", wrapper.PublicPostToken)
@@ -262,12 +262,12 @@ var swaggerSpec = []string{
 	"ryATF6ZEhOy3xK1dRDrnkyo1+B3tsH8gE7xTMj7e3lCzqfO8VK4qAZOKGRAZc/ZkL9KmrAAwSBa22Z7G",
 	"n5Bdp8LaNUMwKxm5kFiBQa99dUlBV4ASheQh/+ViejElIrMpGSZYXQYRnQ+qftfTqfadxl7bRO0S7o08",
 	"pN8QS93EPOS35SKT0a1Ge73VOGlMoeuhItsaVIOBKbU7Q1wO66vkguHW03dXxzW0WzDfaBw/NdCNUIyW",
-	"eS7M+oBRrUjQhbo3J5+7Uz3eCl5dlG0CbM5OhTAiB+uCxtWf7nTmzjC9ZDaF7ZWtwdbxiiLKtGkdyBXj",
-	"1IloTQmTRu+0n7TzyUAkzeoJOgXm2Mx1cfrZdXQ2lch2IeVgNVFiAZFcSojZYs38t4+IwFnjw04Nxb53",
-	"iJ6Rdkw4Ds6930E8ztqPG28JSIvBC5khgT728IUInV5PWQOO+xPsg+eM0y27Pw+fbNgPYwimdzg6h1eq",
-	"SkZZvKthj3OXWA0G6RiWchlUzISKmYEI5ApYVTPxuCurB5vBOnAHiUTHLhVpufw9kIS+UTol89rPV9/I",
-	"/fVc/x1k2YAJjzhm19MO+cWWRjmVfky2mi2IXWPXUyxLY1MwNbXiAZ/d000nuKz1+rn55iT+vH3JHJmH",
-	"7+iwlm17fUUZ6xT4slsa1xxmOhJZqtEGrhmb787tO68gNezj7Q3WFbfSvZlv/gsAAP//jfVjoNcXAAA=",
+	"eS7M+oBRrUjQhbo3J5+7Uz3eCl5lvAmwOTkVwogcrAsZV326s5mMmV4ym8L2utZQ6zhFEV3atA5iGfNm",
+	"ClpTwqTRNe2n63wyEEOzenZOgTkec/2bfna9nE0lsl0wOVBNjFhAJJcSYrZYs1cHazMi9maNzzo1CPte",
+	"IHqG2TGBODjxfgeROGs/a7wlFC0GL2SGBPp4w5cgdHo9WQ047k+wD54tTrfs/iR8smE/jKGW3rHoHF6p",
+	"ahhl8K56Pc5dYjW4o2NYymRQMRMqZgYikCtgVbXE466snmoGK8AdJBIds1R05fL3QBL6FumUzGs/XH0j",
+	"69cT/XeQZQMmPOKYXTc75BdbGuVU+gHZarYgdo1dN7EsjU3B1NSKB3x2Tzed4LLWu+fmm5P48/YNc2Qe",
+	"vqPDWrbt9RVlrFPgS25pXFuY6UhkqUYbuDZsvju377yC1LCPtzdY19tK92a++S8AAP//X+nOZdEXAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

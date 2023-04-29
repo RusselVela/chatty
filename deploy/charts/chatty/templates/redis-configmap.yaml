@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "service.name" . }}-redis-config
+  labels:
+    app: {{ template "service.name" . }}-redis
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    type: microservice
+data:
+  redis-config: |
+    maxmemory 10mb
+    maxmemory-policy allkeys-lru

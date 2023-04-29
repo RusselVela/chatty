@@ -3,6 +3,7 @@ package app
 import (
 	"embed"
 	"github.com/RusselVela/chatty/internal/app/datasourcce/repository/inmemory"
+	"github.com/RusselVela/chatty/internal/app/datasourcce/repository/redis"
 
 	"github.com/RusselVela/chatty/internal/app/service"
 	"github.com/RusselVela/chatty/internal/handler/web"
@@ -30,6 +31,7 @@ func NewWithConfig(cfgPath string) *fx.App {
 		fx.Provide(
 			ConfigureLogger,
 			web.GetSwagger,
+			redis.ConfigureRedisDB,
 			fx.Annotate(web.ConfigureHTTPServers, fx.As(new(web.EchoRouter))),
 			fx.Annotate(service.NewChattyService, fx.As(new(web.ChattyService))),
 			fx.Annotate(web.NewWebHandler, fx.As(new(web.ServerInterface))),

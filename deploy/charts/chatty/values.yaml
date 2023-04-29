@@ -18,6 +18,12 @@ probes:
     initialDelaySeconds: 5
     periodSeconds: 5
     timeoutSeconds: 5
+redis:
+  image: "redis:5.0.4"
+  service:
+    internalPort: 6379
+    externalPort: 6379
+  db: 0
 replicaCount: 1
 resources:
   limits:
