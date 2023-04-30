@@ -81,7 +81,7 @@ func (c *Client) GetMessages(userID string) []*domain.Message {
 	}
 	for _, m := range result {
 		msg := &domain.Message{}
-		json.Unmarshal([]byte(m), msg)
+		_ = json.Unmarshal([]byte(m), msg)
 		messages = append(messages, msg)
 	}
 
