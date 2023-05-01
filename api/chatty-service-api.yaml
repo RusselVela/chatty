@@ -44,6 +44,20 @@ paths:
           $ref: '#/components/responses/400BadRequest'
         500:
           $ref: '#/components/responses/500InternalServerError'
+  /v1/chatty/users:
+    get:
+      summary: Returns a list of users
+      description: Returns a list of users in Chatty.
+      operationId: public-get-users
+      tags:
+        - Public
+      responses:
+        200:
+          $ref: '#/components/responses/200SuccessGetUsers'
+        400:
+          $ref: '#/components/responses/400BadRequest'
+        500:
+          $ref: '#/components/responses/500InternalServerError'
   /v1/chatty/chats/ws:
     get:
       summary: Connects to Chatty to send and receive messages
@@ -74,6 +88,19 @@ paths:
       responses:
         201:
           $ref: '#/components/responses/201SuccessChannelCreation'
+        400:
+          $ref: '#/components/responses/400BadRequest'
+        500:
+          $ref: '#/components/responses/500InternalServerError'
+    get:
+      summary: Returns a list of channels
+      description: Returns a list of channels in Chatty.
+      operationId: public-get-channels
+      tags:
+        - Public
+      responses:
+        200:
+          $ref: '#/components/responses/200SuccessGetChannels'
         400:
           $ref: '#/components/responses/400BadRequest'
         500:
@@ -140,6 +167,18 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/SuccessLoginSchema'
+    200SuccessGetUsers:
+      description: GetUsers is successful
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SuccessGetUsers'
+    200SuccessGetChannels:
+      description: GetChannels is successful
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SuccessGetChannels'
     200SuccessfulWsConnection:
       description: Message sent successfully
       content:
@@ -204,6 +243,25 @@ components:
         password:
           type: string
           format: password
+    User:
+      type: object
+      required:
+        - id
+        - username
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+    SuccessGetUsers:
+      type: object
+      required:
+        - users
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
     SuccessLoginSchema:
       type: object
       required:
@@ -215,6 +273,37 @@ components:
         token:
           type: string
           format: password
+    Channel:
+      type: object
+      required:
+        - id
+        - name
+        - ownerId
+        - visibility
+        - members
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        ownerId:
+          type: string
+        visibility:
+          type: string
+        members:
+          type: array
+          items: {
+                   type: string
+          }
+    SuccessGetChannels:
+      type: object
+      required:
+        - channels
+      properties:
+        channels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Channel'
     ChannelSubscription:
       type: object
     SuccessChannelSubscription:

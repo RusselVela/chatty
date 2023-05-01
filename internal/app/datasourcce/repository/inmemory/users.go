@@ -45,3 +45,12 @@ func GetUserByName(username string) *UserBean {
 	}
 	return users[id]
 }
+
+func GetUsers() []*UserBean {
+	userList := make([]*UserBean, 0, len(users))
+	for _, v := range users {
+		userList = append(userList, v)
+	}
+
+	return userList
+}

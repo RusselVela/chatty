@@ -144,6 +144,14 @@ func (cs *ChattyService) SubscribeChannel(userId string, channelId string) error
 	return nil
 }
 
+func (cs *ChattyService) GetUsers() ([]*inmemory.UserBean, error) {
+	return inmemory.GetUsers(), nil
+}
+
+func (cs *ChattyService) GetChannels() ([]*inmemory.ChannelBean, error) {
+	return inmemory.GetChannels(), nil
+}
+
 func (cs *ChattyService) sedPreviousMessages(wsClient *UserClient) error {
 	messages := cs.redisClient.GetMessages(wsClient.user.Id.String())
 	for _, msg := range messages {

@@ -3,6 +3,7 @@ package web
 import (
 	"errors"
 	"fmt"
+	"github.com/RusselVela/chatty/internal/app/datasourcce/repository/inmemory"
 	"github.com/RusselVela/chatty/internal/app/service"
 	"github.com/golang-jwt/jwt/v4"
 	"net/http"
@@ -15,8 +16,10 @@ import (
 type ChattyService interface {
 	Signup(username string, password string) (string, string, error)
 	Login(username string, password string) (string, error)
+	GetUsers() ([]*inmemory.UserBean, error)
 	CreateChannel(name string, visibility string, owner string) error
 	SubscribeChannel(username string, channelName string) error
+	GetChannels() ([]*inmemory.ChannelBean, error)
 	HandleConnections(ctx echo.Context, token string) error
 }
 
@@ -69,6 +72,21 @@ func (wh *WebHandler) PublicPostToken(ctx echo.Context) error {
 	})
 }
 
+func (wh *WebHandler) PublicGetUsers(ctx echo.Context) error {
+	userBeans, err := wh.service.GetUsers()
+	if err != nil {
+		status, errMsg := wh.toErrorMessage(err)
+		return ctx.JSON(status, errMsg)
+	}
+	users := make([]User, 0)
+	for _, ub := range userBeans {
+		user := wh.beanToUser(ub)
+		users = append(users, user)
+	}
+	list := SuccessGetUsers{Users: users}
+	return ctx.JSON(http.StatusOK, list)
+}
+
 func (wh *WebHandler) PublicGetWs(ctx echo.Context) error {
 	user := ctx.Get("user").(*jwt.Token)
 	claims := user.Claims.(*service.JWTCustomClaims)
@@ -119,6 +137,21 @@ func (wh *WebHandler) PublicPostChannelsSubscribe(ctx echo.Context, id string) e
 	})
 }
 
+func (wh *WebHandler) PublicGetChannels(ctx echo.Context) error {
+	channelBeans, err := wh.service.GetChannels()
+	if err != nil {
+		status, errMsg := wh.toErrorMessage(err)
+		return ctx.JSON(status, errMsg)
+	}
+	channels := make([]Channel, 0)
+	for _, cb := range channelBeans {
+		channel := wh.beanToChannel(cb)
+		channels = append(channels, channel)
+	}
+	list := SuccessGetChannels{Channels: channels}
+	return ctx.JSON(http.StatusOK, list)
+}
+
 func (wh *WebHandler) toErrorMessage(err error) (int, *ErrorMessage) {
 
 	var errorCode *service.ErrorCode
@@ -138,4 +171,26 @@ func (wh *WebHandler) toErrorMessage(err error) (int, *ErrorMessage) {
 	}
 
 	return errorCode.Status, errorMessage
+}
+
+func (wh *WebHandler) beanToUser(user *inmemory.UserBean) User {
+	return User{
+		Id:       user.Id.String(),
+		Username: user.Username,
+	}
+}
+
+func (wh *WebHandler) beanToChannel(channel *inmemory.ChannelBean) Channel {
+	members := make([]string, 0)
+	for _, v := range channel.Members {
+		members = append(members, v)
+	}
+
+	return Channel{
+		Id:         channel.Id.String(),
+		Members:    members,
+		Name:       channel.Name,
+		OwnerId:    channel.OwnerId,
+		Visibility: channel.Visibility,
+	}
 }

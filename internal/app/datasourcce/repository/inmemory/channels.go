@@ -50,3 +50,12 @@ func GetChannelByName(name string) *ChannelBean {
 	}
 	return channels[id]
 }
+
+func GetChannels() []*ChannelBean {
+	channelList := make([]*ChannelBean, 0, len(channels))
+	for _, v := range channels {
+		channelList = append(channelList, v)
+	}
+
+	return channelList
+}
