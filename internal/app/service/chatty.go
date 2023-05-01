@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/RusselVela/chatty/internal/app/datasourcce/repository/inmemory"
+	chattyredis "github.com/RusselVela/chatty/internal/app/datasourcce/repository/redis"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"net/http"
@@ -21,10 +22,13 @@ var (
 )
 
 type ChattyService struct {
+	redisClient *chattyredis.Client
 }
 
-func NewChattyService() *ChattyService {
-	return &ChattyService{}
+func NewChattyService(redisClient *chattyredis.Client) *ChattyService {
+	return &ChattyService{
+		redisClient: redisClient,
+	}
 }
 
 func (cs *ChattyService) Signup(username string, password string) (string, string, error) {
@@ -74,6 +78,10 @@ func (cs *ChattyService) HandleConnections(ctx echo.Context, userId string) erro
 
 	clients[user.Id.String()] = wsClient
 
+	err = cs.sedPreviousMessages(wsClient)
+	if err != nil {
+		zap.S().Errorf("failed to send previous messages: %s", err.Error())
+	}
 	wsClient.readMessages()
 
 	wsClient.ctx, wsClient.cancel = nil, nil
@@ -132,6 +140,19 @@ func (cs *ChattyService) SubscribeChannel(userId string, channelId string) error
 	channelClient.Subscribe <- user
 	user.Subscriptions = append(user.Subscriptions, channel.Id.String())
 	zap.S().Infof("User %s joined Channel: %s", user.Username, channel.Name)
+
+	return nil
+}
+
+func (cs *ChattyService) sedPreviousMessages(wsClient *UserClient) error {
+	messages := cs.redisClient.GetMessages(wsClient.user.Id.String())
+	for _, msg := range messages {
+		wsClient.writeMessage(*msg)
+	}
+	_, err := cs.redisClient.ClearMessageQueue(wsClient.user.Id.String())
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

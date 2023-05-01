@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ template "service.name" . }}-redis
+  labels:
+    app: {{ template "service.name" . }}-redis
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    type: microservice
+spec:
+  serviceName: {{ template "service.name" . }}-redis
+  selector:
+    matchLabels:
+      app: {{ template "service.name" . }}-redis
+      type: microservice
+  replicas: {{ .Values.replicaCount }}
+  updateStrategy:
+    type: RollingUpdate
+  podManagementPolicy: OrderedReady
+  template:
+    metadata:
+      labels:
+        app: {{ template "service.name" . }}-redis
+        type: microservice
+      annotations:
+        ad.datadoghq.com/{{ template "service.name" . }}.logs: |
+          [{
+            "service": "{{ template "service.name" . }}",
+            "log_processing_rules": [
+                {
+                  "type": "mask_sequences",
+                  "name": "mask_api_key",
+                  "replace_placeholder": "**************",
+                  "pattern" : "(t|T)ppl-(a|A)pi-(k|K)ey(:|=)\\[?\\w{8}-\\w{4}-\\w{4}-\\w{4}-\\w{12}\\]?"
+                },{
+                  "type": "mask_sequences",
+                  "name": "mask_api_key_in_path",
+                  "replace_placeholder": "apikeys/**************",
+                  "pattern" : "apikeys\\/\\w{8}-\\w{4}-\\w{4}-\\w{4}-\\w{12}"
+                },{
+                  "type": "exclude_at_match",
+                  "name": "exclude_debug",
+                  "pattern" : "\"level\":\"DEBUG\""
+                }
+              ]
+          }]
+        ad.datadoghq.com/{{ template "service.name" . }}.check_names: |
+          ["openmetrics"]
+        ad.datadoghq.com/{{ template "service.name" . }}.init_configs: |
+          [{}]
+        ad.datadoghq.com/{{ template "service.name" . }}.instances: |
+          [
+            {
+              "prometheus_url": "http://%%host%%:{{ .Values.service.systemPort }}/prometheus",
+              "namespace": "{{ .Release.Namespace }}",
+              "metrics": ["*"]
+            }
+          ]
+    spec:
+      serviceAccountName: {{ template "service.name" . }}
+      containers:
+        - name: {{ template "service.name" . }}-redis
+          image: {{ .Values.redis.image }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - redis-server
+            - "/redis-master/redis.conf"
+          env:
+            - name: MASTER
+              value: "true"
+          ports:
+            - containerPort: {{ .Values.redis.service.internalPort }}
+          volumeMounts:
+            - name: data
+              mountPath: /redis-master-data
+            - name: config
+              mountPath: /redis-master
+          resources:
+            limits:
+              cpu: "0.1"
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: config
+          configMap:
+            name: {{ template "service.name" . }}-redis-config
+            items:
+              - key: redis-config
+                path: redis.conf
