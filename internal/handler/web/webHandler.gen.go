@@ -22,6 +22,15 @@ const (
 	JwtAuthScopes = "jwtAuth.Scopes"
 )
 
+// Channel defines model for Channel.
+type Channel struct {
+	Id         string   `json:"id"`
+	Members    []string `json:"members"`
+	Name       string   `json:"name"`
+	OwnerId    string   `json:"ownerId"`
+	Visibility string   `json:"visibility"`
+}
+
 // ChannelCreation defines model for ChannelCreation.
 type ChannelCreation struct {
 	Name string `json:"name"`
@@ -58,6 +67,16 @@ type SuccessChannelSubscription struct {
 	Ok   bool   `json:"ok"`
 }
 
+// SuccessGetChannels defines model for SuccessGetChannels.
+type SuccessGetChannels struct {
+	Channels []Channel `json:"channels"`
+}
+
+// SuccessGetUsers defines model for SuccessGetUsers.
+type SuccessGetUsers struct {
+	Users []User `json:"users"`
+}
+
 // SuccessLoginSchema defines model for SuccessLoginSchema.
 type SuccessLoginSchema struct {
 	Ok    bool   `json:"ok"`
@@ -82,8 +101,20 @@ type UnauthorizedSchema struct {
 	Message string `json:"message"`
 }
 
+// User defines model for User.
+type User struct {
+	Id       string `json:"id"`
+	Username string `json:"username"`
+}
+
 // N200SuccessChannelSubscribe defines model for 200SuccessChannelSubscribe.
 type N200SuccessChannelSubscribe = SuccessChannelSubscription
+
+// N200SuccessGetChannels defines model for 200SuccessGetChannels.
+type N200SuccessGetChannels = SuccessGetChannels
+
+// N200SuccessGetUsers defines model for 200SuccessGetUsers.
+type N200SuccessGetUsers = SuccessGetUsers
 
 // N200SuccessfulLogin defines model for 200SuccessfulLogin.
 type N200SuccessfulLogin = SuccessLoginSchema
@@ -132,6 +163,9 @@ type PublicPostTokenJSONRequestBody = LoginSchema
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Returns a list of channels
+	// (GET /v1/chatty/channels)
+	PublicGetChannels(ctx echo.Context) error
 	// Creates a new channel
 	// (POST /v1/chatty/channels)
 	PublicPostChannels(ctx echo.Context) error
@@ -147,11 +181,23 @@ type ServerInterface interface {
 	// Returns a token
 	// (POST /v1/chatty/token)
 	PublicPostToken(ctx echo.Context) error
+	// Returns a list of users
+	// (GET /v1/chatty/users)
+	PublicGetUsers(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// PublicGetChannels converts echo context to params.
+func (w *ServerInterfaceWrapper) PublicGetChannels(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PublicGetChannels(ctx)
+	return err
 }
 
 // PublicPostChannels converts echo context to params.
@@ -208,6 +254,15 @@ func (w *ServerInterfaceWrapper) PublicPostToken(ctx echo.Context) error {
 	return err
 }
 
+// PublicGetUsers converts echo context to params.
+func (w *ServerInterfaceWrapper) PublicGetUsers(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.PublicGetUsers(ctx)
+	return err
+}
+
 // This is a simple interface which specifies echo.Route addition functions which
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
@@ -236,38 +291,44 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.GET(baseURL+"/v1/chatty/channels", wrapper.PublicGetChannels)
 	router.POST(baseURL+"/v1/chatty/channels", wrapper.PublicPostChannels)
 	router.POST(baseURL+"/v1/chatty/channels/:id/subscribe", wrapper.PublicPostChannelsSubscribe)
 	router.GET(baseURL+"/v1/chatty/chats/ws", wrapper.PublicGetWs)
 	router.POST(baseURL+"/v1/chatty/signup", wrapper.PublicPostSignup)
 	router.POST(baseURL+"/v1/chatty/token", wrapper.PublicPostToken)
+	router.GET(baseURL+"/v1/chatty/users", wrapper.PublicGetUsers)
 
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
