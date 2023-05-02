@@ -3,10 +3,11 @@ package web
 import (
 	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/RusselVela/chatty/internal/app/datasourcce/repository/inmemory"
 	"github.com/RusselVela/chatty/internal/app/service"
 	"github.com/golang-jwt/jwt/v4"
-	"net/http"
 
 	"github.com/labstack/echo/v4"
 )

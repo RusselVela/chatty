@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+
 	"github.com/RusselVela/chatty/internal/app/datasourcce/repository/inmemory"
 	"github.com/RusselVela/chatty/internal/app/domain"
 )

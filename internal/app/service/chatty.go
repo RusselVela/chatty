@@ -2,12 +2,13 @@ package service
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/RusselVela/chatty/internal/app/datasourcce/repository/inmemory"
 	chattyredis "github.com/RusselVela/chatty/internal/app/datasourcce/repository/redis"
 	"github.com/RusselVela/chatty/internal/app/domain"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
-	"net/http"
 )
 
 var (

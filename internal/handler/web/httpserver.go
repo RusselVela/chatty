@@ -2,12 +2,14 @@ package web
 
 import (
 	"context"
-	"github.com/RusselVela/chatty/internal/app/service"
-	"github.com/golang-jwt/jwt/v4"
-	echojwt "github.com/labstack/echo-jwt/v4"
+	"fmt"
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/RusselVela/chatty/internal/app/service"
+	"github.com/golang-jwt/jwt/v4"
+	echojwt "github.com/labstack/echo-jwt/v4"
 
 	"github.com/knadh/koanf"
 	"github.com/labstack/echo/v4"
@@ -65,22 +67,7 @@ func ConfigureHTTPServers(lifecycle fx.Lifecycle, shutdowner fx.Shutdowner, k *k
 			return nil, err
 		}
 
-		lifecycle.Append(fx.Hook{
-			OnStart: func(ctx context.Context) error {
-				go func() {
-					if err := systemEcho.Start(systemEcho.Listener.Addr().String()); err != nil && err != http.ErrServerClosed {
-						zap.L().Error("failed to start system HTTP server", zap.Error(err))
-						if err := shutdowner.Shutdown(); err != nil {
-							zap.L().Error("fx shutdown error", zap.Error(err))
-						}
-					}
-				}()
-				return nil
-			},
-			OnStop: func(ctx context.Context) error {
-				return systemEcho.Shutdown(ctx)
-			},
-		})
+		lifecycle.Append(getHook("System", systemEcho, shutdowner))
 	}
 
 	e, err := newEcho(httpConfig)
@@ -88,18 +75,8 @@ func ConfigureHTTPServers(lifecycle fx.Lifecycle, shutdowner fx.Shutdowner, k *k
 		return nil, err
 	}
 
-	jwtConfig := echojwt.Config{
-		NewClaimsFunc: newClaims,
-		Skipper:       skipAuthentication,
-		SigningKey:    service.JWTSecret,
-	}
-
-	cc := middleware.CORSConfig{
-		AllowCredentials: false,
-		AllowHeaders:     getCorsAllowOrigin(k),
-		AllowMethods:     []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete, http.MethodOptions},
-		AllowOrigins:     getCorsAllowOrigin(k),
-	}
+	jwtConfig := getJWTConfig()
+	cc := getCorsConfig(k)
 
 	e.Use(
 		middleware.CORSWithConfig(cc),
@@ -107,22 +84,7 @@ func ConfigureHTTPServers(lifecycle fx.Lifecycle, shutdowner fx.Shutdowner, k *k
 		echojwt.WithConfig(jwtConfig),
 	)
 
-	lifecycle.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			go func() {
-				if err := e.Start(e.Listener.Addr().String()); err != nil && err != http.ErrServerClosed {
-					zap.L().Error("failed to start echo server", zap.Error(err))
-					if err := shutdowner.Shutdown(); err != nil {
-						zap.L().Error("fx shutdown error", zap.Error(err))
-					}
-				}
-			}()
-			return nil
-		},
-		OnStop: func(ctx context.Context) error {
-			return e.Shutdown(ctx)
-		},
-	})
+	lifecycle.Append(getHook("echo", e, shutdowner))
 
 	return e, nil
 }
@@ -168,6 +130,34 @@ func newEcho(config *HTTPServerConfig) (*echo.Echo, error) {
 	return e, nil
 }
 
+func getHook(n string, echo *echo.Echo, shutdowner fx.Shutdowner) fx.Hook {
+	text := fmt.Sprintf("failed to start %s server", n)
+	return fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			go func() {
+				if err := echo.Start(echo.Listener.Addr().String()); err != nil && err != http.ErrServerClosed {
+					zap.L().Error(text, zap.Error(err))
+					if err = shutdowner.Shutdown(); err != nil {
+						zap.L().Error("fx shutdown error", zap.Error(err))
+					}
+				}
+			}()
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			return echo.Shutdown(ctx)
+		},
+	}
+}
+
+func getJWTConfig() echojwt.Config {
+	return echojwt.Config{
+		NewClaimsFunc: newClaims,
+		Skipper:       skipAuthentication,
+		SigningKey:    service.JWTSecret,
+	}
+}
+
 func newClaims(c echo.Context) jwt.Claims {
 	return new(service.JWTCustomClaims)
 }
@@ -179,6 +169,15 @@ func skipAuthentication(c echo.Context) bool {
 		}
 	}
 	return false
+}
+
+func getCorsConfig(k *koanf.Koanf) middleware.CORSConfig {
+	return middleware.CORSConfig{
+		AllowCredentials: false,
+		AllowHeaders:     getCorsAllowOrigin(k),
+		AllowMethods:     []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete, http.MethodOptions},
+		AllowOrigins:     getCorsAllowOrigin(k),
+	}
 }
 
 func getCorsAllowOrigin(k *koanf.Koanf) []string {

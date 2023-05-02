@@ -3,12 +3,13 @@ package service
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/RusselVela/chatty/internal/app/datasourcce/repository/inmemory"
 	"github.com/RusselVela/chatty/internal/app/domain"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
-	"sync"
-	"time"
 )
 
 type UserClient struct {

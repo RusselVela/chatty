@@ -2,6 +2,7 @@ package app
 
 import (
 	"embed"
+
 	"github.com/RusselVela/chatty/internal/app/datasourcce/repository/inmemory"
 	"github.com/RusselVela/chatty/internal/app/datasourcce/repository/redis"
 

@@ -2,11 +2,12 @@ package service
 
 import (
 	"context"
+	"net/http"
+	"time"
+
 	"github.com/gorilla/websocket"
 	"github.com/knadh/koanf"
 	"github.com/labstack/echo/v4"
-	"net/http"
-	"time"
 )
 
 // WebsocketHandler is used for managing websocket connections
