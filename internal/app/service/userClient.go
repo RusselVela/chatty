@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 	"sync"
+	"time"
 )
 
 type UserClient struct {
@@ -17,6 +18,7 @@ type UserClient struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	mu        sync.Mutex
+	message   chan domain.Message
 }
 
 // readAuthMessage waits for the first message that comes from client. Then parses it to retrieve a token.
@@ -59,9 +61,6 @@ func (uc *UserClient) readAuthMessage() (string, error) {
 // their destination
 func (uc *UserClient) readMessages() {
 	defer func() {
-		if err := uc.wsConn.Close(); err != nil {
-			zap.S().Warnf("ws upgrade: ws connection close error %v", err)
-		}
 		uc.cancel()
 		uc.release()
 	}()
@@ -83,20 +82,44 @@ func (uc *UserClient) readMessages() {
 }
 
 // writeMessage sends a domain.Message object to the client of this websocket
-func (uc *UserClient) writeMessage(msg domain.Message) {
+func (uc *UserClient) writeMessage() {
+	ticker := time.NewTicker(uc.wsHandler.wsPingPeriod)
 	uc.mu.Lock()
+
 	defer func() {
+		ticker.Stop()
+		uc.release()
 		uc.mu.Unlock()
 	}()
 
-	err := uc.wsConn.WriteJSON(msg)
-	if err != nil && !websocket.IsCloseError(err, websocket.CloseGoingAway) {
-		removeClient(uc.user.Id.String())
+	for {
+		select {
+		case message, ok := <-uc.message:
+			_ = uc.wsConn.SetWriteDeadline(time.Now().Add(uc.wsHandler.wsWriteWait))
+			if !ok {
+				_ = uc.wsConn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+
+			err := uc.wsConn.WriteJSON(message)
+			if err != nil && !websocket.IsCloseError(err, websocket.CloseGoingAway) {
+				removeClient(uc.user.Id.String())
+			}
+		case <-ticker.C:
+			_ = uc.wsConn.SetWriteDeadline(time.Now().Add(uc.wsHandler.wsWriteWait))
+			if err := uc.wsConn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		}
 	}
+
 }
 
 // release clears all the resources no longer needed by this websocket client. Normally invoked after closing the socket
 func (uc *UserClient) release() {
+	if err := uc.wsConn.Close(); err != nil {
+		zap.S().Warnf("ws upgrade: ws connection close error %v", err)
+	}
 	uc.ctx = nil
 	uc.cancel = nil
 	uc.wsConn = nil

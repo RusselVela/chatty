@@ -28,7 +28,7 @@ func handleMessages(redisClient *chattyredis.Client) {
 				redisClient.StoreMessage(msg)
 				continue
 			}
-			wsClient.writeMessage(msg)
+			wsClient.message <- msg
 		case domain.TypeChannel:
 			channel, found := channelClients[target]
 			if !found {

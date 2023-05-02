@@ -64,7 +64,7 @@ func (cn *ChannelClient) broadcastMessage(message domain.Message) {
 	for _, userId := range cn.Channel.Members {
 		wsClient := clients[userId]
 		if wsClient != nil {
-			wsClient.writeMessage(message)
+			wsClient.message <- message
 		}
 	}
 }
