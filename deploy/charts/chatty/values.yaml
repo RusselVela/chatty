@@ -1,3 +1,6 @@
+cors:
+  allowOrigin:
+    - "localhost"
 image:
   refs:
     chatty_service: latest

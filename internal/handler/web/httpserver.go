@@ -19,6 +19,7 @@ import (
 
 const (
 	httpServerConfigKey = "http.server"
+	corsAllowOriginKey  = "cors.allowOrigin"
 )
 
 var unauthenticatedPaths = []string{
@@ -92,7 +93,15 @@ func ConfigureHTTPServers(lifecycle fx.Lifecycle, shutdowner fx.Shutdowner, k *k
 		SigningKey:    service.JWTSecret,
 	}
 
+	cc := middleware.CORSConfig{
+		AllowCredentials: false,
+		AllowHeaders:     getCorsAllowOrigin(k),
+		AllowMethods:     []string{http.MethodGet, http.MethodHead, http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete, http.MethodOptions},
+		AllowOrigins:     getCorsAllowOrigin(k),
+	}
+
 	e.Use(
+		middleware.CORSWithConfig(cc),
 		middleware.Recover(),
 		echojwt.WithConfig(jwtConfig),
 	)
@@ -168,4 +177,13 @@ func skipAuthentication(c echo.Context) bool {
 		}
 	}
 	return false
+}
+
+func getCorsAllowOrigin(k *koanf.Koanf) []string {
+	allowOrigin := k.Strings(corsAllowOriginKey)
+	if len(allowOrigin) < 1 {
+		allowOrigin = append(allowOrigin, "*")
+	}
+
+	return allowOrigin
 }
