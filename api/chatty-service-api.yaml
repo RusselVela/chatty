@@ -222,7 +222,6 @@ components:
     SuccessSignupSchema:
       type: object
       required:
-        - ok
         - username
         - id
       properties:
@@ -265,11 +264,8 @@ components:
     SuccessLoginSchema:
       type: object
       required:
-        - ok
         - token
       properties:
-        ok:
-          type: boolean
         token:
           type: string
           format: password
@@ -330,12 +326,15 @@ components:
       type: object
       required:
         - name
-        - ok
+        - id
+        - ownerId
       properties:
         name:
           type: string
-        ok:
-          type: boolean
+        id:
+          type: string
+        ownerId:
+          type: string
     SuccessWsConnectionSchema:
       type: object
       required:

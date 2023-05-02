@@ -17,7 +17,7 @@ type ChattyService interface {
 	Signup(username string, password string) (string, string, error)
 	Login(username string, password string) (string, error)
 	GetUsers() ([]*inmemory.UserBean, error)
-	CreateChannel(name string, visibility string, owner string) error
+	CreateChannel(name string, visibility string, owner string) (*inmemory.ChannelBean, error)
 	SubscribeChannel(username string, channelName string) error
 	GetChannels() ([]*inmemory.ChannelBean, error)
 	HandleConnections(ctx echo.Context, token string) error
@@ -49,7 +49,6 @@ func (wh *WebHandler) PublicPostSignup(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, N201SuccessfulSignUp{
 		Id:       id,
 		Username: username,
-		Ok:       true,
 	})
 }
 
@@ -67,7 +66,6 @@ func (wh *WebHandler) PublicPostToken(ctx echo.Context) error {
 	}
 
 	return ctx.JSON(http.StatusOK, N200SuccessfulLogin{
-		Ok:    true,
 		Token: token,
 	})
 }
@@ -109,15 +107,16 @@ func (wh *WebHandler) PublicPostChannels(ctx echo.Context) error {
 		return ctx.JSON(status, errMsg)
 	}
 
-	err := wh.service.CreateChannel(request.Name, request.Type, claims.Id)
+	channel, err := wh.service.CreateChannel(request.Name, request.Type, claims.Id)
 	if err != nil {
 		status, errMsg := wh.toErrorMessage(err)
 		return ctx.JSON(status, errMsg)
 	}
 
 	return ctx.JSON(http.StatusCreated, N201SuccessChannelCreation{
-		Ok:   true,
-		Name: request.Name,
+		Id:      channel.Id.String(),
+		OwnerId: channel.OwnerId,
+		Name:    request.Name,
 	})
 }
 
