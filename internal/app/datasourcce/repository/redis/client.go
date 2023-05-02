@@ -8,6 +8,7 @@ import (
 	"github.com/knadh/koanf"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
+	"sync"
 	"time"
 )
 
@@ -15,6 +16,8 @@ const (
 	redisConfigKey = "redis"
 	redisUserKey   = "user-queue-%s"
 )
+
+var redisMu sync.Mutex
 
 // Config represents a redis instance configuration
 type Config struct {
@@ -58,6 +61,11 @@ func newRedisClient(config *Config) *Client {
 
 // StoreMessage takes a domain.Message and stores it on the redis instance
 func (c *Client) StoreMessage(message domain.Message) {
+	redisMu.Lock()
+	defer func() {
+		redisMu.Unlock()
+	}()
+
 	id := time.Now().UnixMilli()
 	message.Id = id
 	jsonMsg, err := json.Marshal(message)
@@ -95,6 +103,11 @@ func (c *Client) GetMessages(userID string) []*domain.Message {
 
 // ClearMessageQueue removes all messages under userID after they have been delivered
 func (c *Client) ClearMessageQueue(userID string) (int64, error) {
+	redisMu.Lock()
+	defer func() {
+		redisMu.Unlock()
+	}()
+
 	key := fmt.Sprintf(redisUserKey, userID)
 
 	result, err := c.client.Del(context.Background(), key).Result()

@@ -3,6 +3,7 @@ package inmemory
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"sync"
 )
 
 // UserBean is the struct that saves user information
@@ -18,9 +19,15 @@ type usersTable map[string]*UserBean
 
 var users usersTable
 var usersByUsername map[string]string
+var userMu sync.Mutex
 
 // NewUser creates a new user in the table
 func NewUser(username string, password string) (*UserBean, error) {
+	userMu.Lock()
+	defer func() {
+		userMu.Unlock()
+	}()
+
 	if userId := usersByUsername[username]; userId != "" {
 		return nil, fmt.Errorf("user %s already exists", username)
 	}

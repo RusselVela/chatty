@@ -3,6 +3,7 @@ package inmemory
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"sync"
 )
 
 // ChannelBean is the struct that saves channel information
@@ -18,9 +19,15 @@ type channelsTable map[string]*ChannelBean
 
 var channels channelsTable
 var channelsByName map[string]string
+var channelMu sync.Mutex
 
 // NewChannel creates a new channel in the table
 func NewChannel(name string, ownerId string, visibility string) (*ChannelBean, error) {
+	channelMu.Lock()
+	defer func() {
+		channelMu.Unlock()
+	}()
+
 	if channelId := channelsByName[name]; channelId != "" {
 		return nil, fmt.Errorf("channel %s already exists", name)
 	}

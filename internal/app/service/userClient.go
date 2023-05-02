@@ -7,6 +7,7 @@ import (
 	"github.com/RusselVela/chatty/internal/app/domain"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
+	"sync"
 )
 
 type UserClient struct {
@@ -15,6 +16,7 @@ type UserClient struct {
 	wsHandler *WebsocketHandler
 	ctx       context.Context
 	cancel    context.CancelFunc
+	mu        sync.Mutex
 }
 
 // readAuthMessage waits for the first message that comes from client. Then parses it to retrieve a token.
@@ -82,6 +84,11 @@ func (uc *UserClient) readMessages() {
 
 // writeMessage sends a domain.Message object to the client of this websocket
 func (uc *UserClient) writeMessage(msg domain.Message) {
+	uc.mu.Lock()
+	defer func() {
+		uc.mu.Unlock()
+	}()
+
 	err := uc.wsConn.WriteJSON(msg)
 	if err != nil && !websocket.IsCloseError(err, websocket.CloseGoingAway) {
 		removeClient(uc.user.Id.String())
