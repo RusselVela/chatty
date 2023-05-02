@@ -90,27 +90,27 @@ func (cs *ChattyService) HandleConnections(ctx echo.Context, userId string) erro
 	return nil
 }
 
-func (cs *ChattyService) CreateChannel(name string, visibility string, ownerId string) error {
+func (cs *ChattyService) CreateChannel(name string, visibility string, ownerId string) (*inmemory.ChannelBean, error) {
 	user := inmemory.GetUser(ownerId)
 	if user == nil {
-		return errUserNotExist.Clone(ownerId)
+		return nil, errUserNotExist.Clone(ownerId)
 	}
 
 	channel := inmemory.GetChannelByName(name)
 	if channel != nil {
-		return errChannelExists.Clone(name)
+		return nil, errChannelExists.Clone(name)
 	}
 
 	channel, err := inmemory.NewChannel(name, ownerId, visibility)
 	if err != nil {
-		return errChannelCreation.Clone(err)
+		return nil, errChannelCreation.Clone(err)
 	}
 
 	channelClient := NewChannelClient(channel)
 	go channelClient.Start()
 
 	zap.S().Infof("User %s created Channel: %s", user.Username, channel.Name)
-	return nil
+	return channel, nil
 }
 
 func (cs *ChattyService) SubscribeChannel(userId string, channelId string) error {
