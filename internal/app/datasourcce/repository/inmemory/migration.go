@@ -5,9 +5,13 @@ func InitDatabase() {
 	//Initializing Users table
 	users = make(usersTable, 0)
 	usersByUsername = make(map[string]string, 0)
+
 	// Initializing Channels table
 	channels = make(channelsTable, 0)
 	channelsByName = make(map[string]string)
+
+	//Initializing TokenToUser table
+	tokenToUser = make(tokenToUsersTable, 0)
 
 	_, _ = NewUser("admin", "admin")
 	_, _ = NewUser("rvela", "newPassword!")
