@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/RusselVela/chatty/internal/app/domain"
 	"github.com/knadh/koanf"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
-	"sync"
-	"time"
 )
 
 const (

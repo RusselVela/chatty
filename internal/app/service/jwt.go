@@ -2,11 +2,12 @@ package service
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/RusselVela/chatty/internal/app/datasourcce/repository/inmemory"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/knadh/koanf"
 	"go.uber.org/zap"
-	"time"
 )
 
 const jwtSecretPath = "jwt.secret"

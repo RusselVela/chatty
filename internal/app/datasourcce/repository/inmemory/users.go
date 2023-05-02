@@ -2,8 +2,9 @@ package inmemory
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 // UserBean is the struct that saves user information
