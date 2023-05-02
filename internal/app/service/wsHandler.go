@@ -24,6 +24,12 @@ var (
 )
 var wsHandler *WebsocketHandler
 
+const (
+	clientWriteWaitKey   = "client.writewait"
+	clientPongWait       = "client.pongwait"
+	clientMaxMessageSize = "client.maxmessagesize"
+)
+
 // NewWebsocketHandler creates a new WebsocketHandler
 func NewWebsocketHandler(k *koanf.Koanf) *WebsocketHandler {
 	if wsHandler != nil {
@@ -39,16 +45,16 @@ func NewWebsocketHandler(k *koanf.Koanf) *WebsocketHandler {
 	}
 
 	// Time allowed to write a message to the peer.
-	wsHandler.wsWriteWait = time.Duration(k.Int("ws.writewait")) * time.Second
+	wsHandler.wsWriteWait = time.Duration(k.Int(clientWriteWaitKey)) * time.Second
 
 	// Time allowed to read the next pong message from the peer.
-	wsHandler.wsPongWait = time.Duration(k.Int("ws.pongwait")) * time.Second
+	wsHandler.wsPongWait = time.Duration(k.Int(clientPongWait)) * time.Second
 
 	// Send pings to peer with this period. Must be less than pongWait.
 	wsHandler.wsPingPeriod = (wsHandler.wsPongWait * 9) / 10
 
 	// Maximum message size allowed from peer.
-	wsHandler.wsMaxMessageSize = k.Int64("ws.maxmessagesize")
+	wsHandler.wsMaxMessageSize = k.Int64(clientMaxMessageSize)
 
 	return wsHandler
 }
@@ -63,6 +69,14 @@ func (wh *WebsocketHandler) UpgradeConnection(ctx echo.Context, wsClient *UserCl
 	if err != nil {
 		return errUpgradingWebsocket.Clone(err.Error())
 	}
+
+	wsConn.SetReadLimit(wh.wsMaxMessageSize)
+	_ = wsConn.SetReadDeadline(time.Now().Add(wh.wsPongWait))
+	wsConn.SetPongHandler(func(string) error {
+		_ = wsConn.SetReadDeadline(time.Now().Add(wsHandler.wsPongWait))
+		return nil
+	})
+
 	wsClient.ctx, wsClient.cancel = context.WithCancel(context.Background())
 	wsClient.wsConn = wsConn
 	wsClient.wsHandler = wh

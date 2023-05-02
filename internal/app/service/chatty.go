@@ -77,11 +77,11 @@ func (cs *ChattyService) HandleConnection(ctx echo.Context) error {
 
 	userId, err := wsClient.readAuthMessage()
 	if err != nil {
-		wsClient.writeMessage(domain.Message{
+		wsClient.message <- domain.Message{
 			Text: "invalid authentication token",
-		})
+		}
 
-		if err := wsClient.wsConn.Close(); err != nil {
+		if err = wsClient.wsConn.Close(); err != nil {
 			zap.S().Warnf("ws upgrade: ws connection close error %v", err)
 		}
 		wsClient.cancel()
@@ -105,6 +105,7 @@ func (cs *ChattyService) HandleConnection(ctx echo.Context) error {
 	if err != nil {
 		zap.S().Errorf("failed to send previous messages: %s", err.Error())
 	}
+	go wsClient.writeMessage()
 	wsClient.readMessages()
 
 	wsClient.ctx, wsClient.cancel = nil, nil
@@ -203,7 +204,7 @@ func (cs *ChattyService) GetChannels() ([]*inmemory.ChannelBean, error) {
 func (cs *ChattyService) sendPreviousMessages(wsClient *UserClient) error {
 	messages := cs.redisClient.GetMessages(wsClient.user.Id.String())
 	for _, msg := range messages {
-		wsClient.writeMessage(*msg)
+		wsClient.message <- *msg
 	}
 	_, err := cs.redisClient.ClearMessageQueue(wsClient.user.Id.String())
 	if err != nil {

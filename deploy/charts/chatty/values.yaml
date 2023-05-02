@@ -39,3 +39,7 @@ service:
   internalPort: 4444
   externalPort: 4444
   systemPort: 4445
+client:
+  writewait: 15
+  pongwait: 45
+  maxmessagesize: 262144
