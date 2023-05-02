@@ -10,10 +10,12 @@ var (
 	clients     = make(map[string]*UserClient)
 )
 
+// HandleMessages is the exposed function to start the handleMessages routine
 func HandleMessages(redisClient *chattyredis.Client) {
 	go handleMessages(redisClient)
 }
 
+// handleMessages receives all incoming messages from clients and delivers them to the correct recipient
 func handleMessages(redisClient *chattyredis.Client) {
 	for {
 		msg := <-broadcaster
@@ -37,6 +39,7 @@ func handleMessages(redisClient *chattyredis.Client) {
 	}
 }
 
+// removeClient removes a websocket struct from the pool of connected websockets
 func removeClient(id string) {
 	delete(clients, id)
 }

@@ -25,6 +25,7 @@ const (
 var unauthenticatedPaths = []string{
 	"/v1/chatty/signup",
 	"/v1/chatty/token",
+	"/v1/chatty/ws",
 }
 
 // HTTPServerConfig provides configuration for HTTP Server
@@ -50,7 +51,7 @@ func ReadHTTPServerConfig(k *koanf.Koanf) (*HTTPServerConfig, error) {
 	return httpServerConfig, nil
 }
 
-// ConfigureHTTPServers creates an HTTP server with standard middleware and a system HTTP server with health and metrics endpoints given an optional TLS listener
+// ConfigureHTTPServers creates an HTTP server with standard middleware and a system HTTP server with health and metrics endpoints
 // returns the echo engine for serving API
 func ConfigureHTTPServers(lifecycle fx.Lifecycle, shutdowner fx.Shutdowner, k *koanf.Koanf) (*echo.Echo, error) {
 	httpConfig, err := ReadHTTPServerConfig(k)
@@ -170,6 +171,7 @@ func newEcho(config *HTTPServerConfig) (*echo.Echo, error) {
 func newClaims(c echo.Context) jwt.Claims {
 	return new(service.JWTCustomClaims)
 }
+
 func skipAuthentication(c echo.Context) bool {
 	for _, path := range unauthenticatedPaths {
 		if path == c.Path() {

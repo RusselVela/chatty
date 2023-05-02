@@ -23,7 +23,7 @@ paths:
         $ref: '#/components/requestBodies/SignUpRequest'
       responses:
         201:
-          $ref: '#/components/responses/201SuccessfulSignUp'
+          $ref: '#/components/responses/201SuccessSignUp'
         400:
           $ref: '#/components/responses/400BadRequest'
         500:
@@ -39,7 +39,7 @@ paths:
         $ref: '#/components/requestBodies/LoginRequest'
       responses:
         200:
-          $ref: '#/components/responses/200SuccessfulLogin'
+          $ref: '#/components/responses/200SuccessLogin'
         401:
           $ref: '#/components/responses/400BadRequest'
         500:
@@ -58,7 +58,7 @@ paths:
           $ref: '#/components/responses/400BadRequest'
         500:
           $ref: '#/components/responses/500InternalServerError'
-  /v1/chatty/chats/ws:
+  /v1/chatty/ws:
     get:
       summary: Connects to Chatty to send and receive messages
       description: Connects to Chatty
@@ -67,9 +67,25 @@ paths:
         - Public
       responses:
         200:
-          $ref: '#/components/responses/200SuccessfulWsConnection'
+          $ref: '#/components/responses/200SuccessWsConnection'
         400:
           $ref: '#/components/responses/400BadRequest'
+        401:
+          $ref: '#/components/responses/401UnauthorizedError'
+        500:
+          $ref: '#/components/responses/500InternalServerError'
+      security:
+        - jwtAuth: []
+  /v1/chatty/ws/token:
+    get:
+      summary: Returns a token for authentication with the Webscoket endpoint
+      description: Returns websocket auth token
+      operationId: public-get-ws-token
+      tags:
+        - Public
+      responses:
+        200:
+          $ref: '#/components/responses/200SuccessWsToken'
         401:
           $ref: '#/components/responses/401UnauthorizedError'
         500:
@@ -155,13 +171,13 @@ components:
           schema:
             $ref: '#/components/schemas/ChannelCreation'
   responses:
-    201SuccessfulSignUp:
+    201SuccessSignUp:
       description: Signup is successful
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/SuccessSignupSchema'
-    200SuccessfulLogin:
+    200SuccessLogin:
       description: Login is successful
       content:
         application/json:
@@ -179,7 +195,7 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/SuccessGetChannels'
-    200SuccessfulWsConnection:
+    200SuccessWsConnection:
       description: Message sent successfully
       content:
         application/json:
@@ -197,6 +213,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/SuccessChannelCreation'
+    200SuccessWsToken:
+      description: Websocket atuh token retrieved
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SuccessLoginSchema'
     400BadRequest:
       description: Bad Request
       content:

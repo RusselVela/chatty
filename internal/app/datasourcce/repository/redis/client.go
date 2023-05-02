@@ -16,16 +16,19 @@ const (
 	redisUserKey   = "user-queue-%s"
 )
 
+// Config represents a redis instance configuration
 type Config struct {
 	Address  string `json:"address"`
 	Password string `json:"password"`
 	DB       int    `json:"db"`
 }
 
+// Client holds all the convenience functions to store and retrieve from redis instance referenced by client
 type Client struct {
 	client *redis.Client
 }
 
+// ConfigureRedisDB takes config values from koanf to establish connection with the redis instance
 func ConfigureRedisDB(k *koanf.Koanf) (*Client, error) {
 	redisConfig, err := readRedisConfig(k)
 	if err != nil {
@@ -53,6 +56,7 @@ func newRedisClient(config *Config) *Client {
 	return &Client{client: client}
 }
 
+// StoreMessage takes a domain.Message and stores it on the redis instance
 func (c *Client) StoreMessage(message domain.Message) {
 	id := time.Now().UnixMilli()
 	message.Id = id
@@ -71,6 +75,7 @@ func (c *Client) StoreMessage(message domain.Message) {
 
 }
 
+// GetMessages retrieves all messages mapped to the given key userID from the redis instance
 func (c *Client) GetMessages(userID string) []*domain.Message {
 	messages := make([]*domain.Message, 0)
 	key := fmt.Sprintf(redisUserKey, userID)
@@ -88,6 +93,7 @@ func (c *Client) GetMessages(userID string) []*domain.Message {
 	return messages
 }
 
+// ClearMessageQueue removes all messages under userID after they have been delivered
 func (c *Client) ClearMessageQueue(userID string) (int64, error) {
 	key := fmt.Sprintf(redisUserKey, userID)
 

@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// ChannelBean is the struct that saves channel information
 type ChannelBean struct {
 	Id         uuid.UUID
 	Name       string
@@ -18,6 +19,7 @@ type channelsTable map[string]*ChannelBean
 var channels channelsTable
 var channelsByName map[string]string
 
+// NewChannel creates a new channel in the table
 func NewChannel(name string, ownerId string, visibility string) (*ChannelBean, error) {
 	if channelId := channelsByName[name]; channelId != "" {
 		return nil, fmt.Errorf("channel %s already exists", name)
@@ -39,10 +41,12 @@ func NewChannel(name string, ownerId string, visibility string) (*ChannelBean, e
 	return channel, nil
 }
 
+// GetChannel retrieves the channel that matches the given id
 func GetChannel(id string) *ChannelBean {
 	return channels[id]
 }
 
+// GetChannelByName retrieves the channel that matches the given name
 func GetChannelByName(name string) *ChannelBean {
 	id, found := channelsByName[name]
 	if !found {
@@ -51,6 +55,7 @@ func GetChannelByName(name string) *ChannelBean {
 	return channels[id]
 }
 
+// GetChannels retrieves all public channels
 func GetChannels() []*ChannelBean {
 	channelList := make([]*ChannelBean, 0, len(channels))
 	for _, v := range channels {
