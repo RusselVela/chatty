@@ -20,7 +20,8 @@ type ChattyService interface {
 	CreateChannel(name string, visibility string, owner string) (*inmemory.ChannelBean, error)
 	SubscribeChannel(username string, channelName string) error
 	GetChannels() ([]*inmemory.ChannelBean, error)
-	HandleConnections(ctx echo.Context, token string) error
+	HandleConnection(ctx echo.Context) error
+	GetConnectionToken(ctx echo.Context, userId string) (string, error)
 }
 
 type WebHandler struct {
@@ -46,7 +47,7 @@ func (wh *WebHandler) PublicPostSignup(ctx echo.Context) error {
 		return ctx.JSON(status, errMsg)
 	}
 
-	return ctx.JSON(http.StatusCreated, N201SuccessfulSignUp{
+	return ctx.JSON(http.StatusCreated, N201SuccessSignUp{
 		Id:       id,
 		Username: username,
 	})
@@ -65,36 +66,32 @@ func (wh *WebHandler) PublicPostToken(ctx echo.Context) error {
 		return ctx.JSON(status, errMsg)
 	}
 
-	return ctx.JSON(http.StatusOK, N200SuccessfulLogin{
+	return ctx.JSON(http.StatusOK, N200SuccessLogin{
 		Token: token,
 	})
 }
 
-func (wh *WebHandler) PublicGetUsers(ctx echo.Context) error {
-	userBeans, err := wh.service.GetUsers()
+func (wh *WebHandler) PublicGetWs(ctx echo.Context) error {
+	err := wh.service.HandleConnection(ctx)
 	if err != nil {
-		status, errMsg := wh.toErrorMessage(err)
-		return ctx.JSON(status, errMsg)
+		return nil
 	}
-	users := make([]User, 0)
-	for _, ub := range userBeans {
-		user := wh.beanToUser(ub)
-		users = append(users, user)
-	}
-	list := SuccessGetUsers{Users: users}
-	return ctx.JSON(http.StatusOK, list)
+	return nil
 }
 
-func (wh *WebHandler) PublicGetWs(ctx echo.Context) error {
+func (wh *WebHandler) PublicGetWsToken(ctx echo.Context) error {
 	user := ctx.Get("user").(*jwt.Token)
 	claims := user.Claims.(*service.JWTCustomClaims)
 
-	err := wh.service.HandleConnections(ctx, claims.Id)
+	token, err := wh.service.GetConnectionToken(ctx, claims.Id)
 	if err != nil {
 		status, errMsg := wh.toErrorMessage(err)
 		return ctx.JSON(status, errMsg)
 	}
-	return nil
+
+	return ctx.JSON(http.StatusOK, N200SuccessLogin{
+		Token: token,
+	})
 }
 
 func (wh *WebHandler) PublicPostChannels(ctx echo.Context) error {
@@ -148,6 +145,21 @@ func (wh *WebHandler) PublicGetChannels(ctx echo.Context) error {
 		channels = append(channels, channel)
 	}
 	list := SuccessGetChannels{Channels: channels}
+	return ctx.JSON(http.StatusOK, list)
+}
+
+func (wh *WebHandler) PublicGetUsers(ctx echo.Context) error {
+	userBeans, err := wh.service.GetUsers()
+	if err != nil {
+		status, errMsg := wh.toErrorMessage(err)
+		return ctx.JSON(status, errMsg)
+	}
+	users := make([]User, 0)
+	for _, ub := range userBeans {
+		user := wh.beanToUser(ub)
+		users = append(users, user)
+	}
+	list := SuccessGetUsers{Users: users}
 	return ctx.JSON(http.StatusOK, list)
 }
 

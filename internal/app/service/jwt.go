@@ -20,17 +20,22 @@ type JWTCustomClaims struct {
 	jwt.RegisteredClaims
 }
 
+// SetupJWTSecret sets the value of the secret from configuration
 func SetupJWTSecret(k *koanf.Koanf) {
 	JWTSecret = []byte(k.String(jwtSecretPath))
 }
 
-func generateJWT(user inmemory.UserBean) (string, error) {
+// generateJWT generates a new JWT with the given duration in minutes
+func generateJWT(user inmemory.UserBean, duration int) (string, error) {
+	if duration <= 0 {
+		duration = 60 * 24
+	}
 	claims := &JWTCustomClaims{
 		Id:         user.Id.String(),
 		Username:   user.Username,
 		Authorized: true,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * time.Duration(duration))),
 		},
 	}
 
@@ -42,4 +47,23 @@ func generateJWT(user inmemory.UserBean) (string, error) {
 
 	zap.L().Info(fmt.Sprintf("token generated for user: %s", user.Id.String()))
 	return tokenString, nil
+}
+
+// parseJWT takes tokenStr and parses it into a jwt.Token struct
+func parseJWT(tokenStr string) (*jwt.Token, error) {
+	claims := &JWTCustomClaims{}
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("invalid websocket auth token")
+		}
+		return JWTSecret, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("invalid token: %w", err)
+	}
+	if !token.Valid {
+		return nil, fmt.Errorf("invalid websocket auth token")
+	}
+
+	return token, nil
 }

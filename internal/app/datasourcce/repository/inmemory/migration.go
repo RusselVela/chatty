@@ -1,5 +1,6 @@
 package inmemory
 
+// InitDatabase initializes two users for convenience
 func InitDatabase() {
 	//Initializing Users table
 	users = make(usersTable, 0)

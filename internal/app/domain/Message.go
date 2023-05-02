@@ -7,6 +7,7 @@ const (
 	TypeChannel
 )
 
+// Message is the domain struct passed along between the service and its clients
 type Message struct {
 	Id                int64       `json:"id"`
 	PreviousMessageId int64       `json:"previousMessageId"`

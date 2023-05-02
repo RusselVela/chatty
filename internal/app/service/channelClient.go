@@ -15,6 +15,7 @@ type ChannelClient struct {
 	Broadcaster chan domain.Message
 }
 
+// NewChannelClient returns a new client for Channel communication
 func NewChannelClient(channel *inmemory.ChannelBean) *ChannelClient {
 	channelClient := &ChannelClient{
 		Channel:     channel,
@@ -27,6 +28,7 @@ func NewChannelClient(channel *inmemory.ChannelBean) *ChannelClient {
 	return channelClient
 }
 
+// Start initializes the loop for receiving messages from clients
 func (cn *ChannelClient) Start() {
 	for {
 		select {

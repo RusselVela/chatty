@@ -12,6 +12,7 @@ type ErrorCode struct {
 	Args    []any  `json:"args"`
 }
 
+// Error interface for errors
 func (ec *ErrorCode) Error() string {
 	return ec.String()
 }
