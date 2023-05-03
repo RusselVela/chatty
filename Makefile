@@ -37,6 +37,11 @@ build-linux: generate
 	go mod download
 	GOOS=linux GOARCH=amd64 go build -o output/bin/$(notdir $(CURDIR)) ./cmd/$(notdir $(CURDIR))
 
+.PHONY: test
+test:
+	go test ./... -coverprofile=coverage.out
+	go tool cover -html=coverage.out
+
 ############ Image rules ############
 .PHONY: buildx
 buildx:
