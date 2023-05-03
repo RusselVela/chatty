@@ -30,6 +30,10 @@ type Client struct {
 	client *redis.Client
 }
 
+func NewRedisClient(client *redis.Client) *Client {
+	return &Client{client: client}
+}
+
 // ConfigureRedisDB takes config values from koanf to establish connection with the redis instance
 func ConfigureRedisDB(k *koanf.Koanf) (*Client, error) {
 	redisConfig, err := readRedisConfig(k)
@@ -65,8 +69,6 @@ func (c *Client) StoreMessage(message domain.Message) {
 		redisMu.Unlock()
 	}()
 
-	//id := time.Now().UnixMilli()
-	//message.Id = id
 	jsonMsg, err := json.Marshal(message)
 	if err != nil {
 		zap.S().Errorf("failed to marshall message for storing: %v", message)
@@ -77,6 +79,8 @@ func (c *Client) StoreMessage(message domain.Message) {
 		c.client.RPush(context.Background(), key, jsonMsg)
 		break
 	case domain.TypeChannel:
+		key := fmt.Sprintf(redisUserKey, message.TargetId)
+		c.client.RPush(context.Background(), key, jsonMsg)
 		break
 	}
 }

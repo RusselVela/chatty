@@ -112,6 +112,7 @@ func (cs *ChattyService) HandleConnection(ctx echo.Context) error {
 	wsClient.ctx, wsClient.cancel = nil, nil
 	wsClient.wsConn = nil
 
+	user.Online = false
 	return nil
 }
 
@@ -151,7 +152,7 @@ func (cs *ChattyService) CreateChannel(name string, visibility string, ownerId s
 		return nil, errChannelCreation.Clone(err)
 	}
 
-	channelClient := NewChannelClient(channel)
+	channelClient := NewChannelClient(channel, cs.redisClient)
 	go channelClient.Start()
 
 	zap.S().Infof("User %s created Channel: %s", user.Username, channel.Name)
@@ -179,7 +180,7 @@ func (cs *ChattyService) SubscribeChannel(userId string, channelId string) error
 	channelClient, found := channelClients[channel.Id.String()]
 	if !found {
 		// Channel client not placed for some reason. Start it
-		channelClient = NewChannelClient(channel)
+		channelClient = NewChannelClient(channel, cs.redisClient)
 		go channelClient.Start()
 		zap.S().Infof("Client for Channel %s started", channel.Name)
 	}

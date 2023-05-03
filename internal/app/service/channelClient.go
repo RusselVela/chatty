@@ -2,8 +2,8 @@ package service
 
 import (
 	"fmt"
-
 	"github.com/RusselVela/chatty/internal/app/datasourcce/repository/inmemory"
+	"github.com/RusselVela/chatty/internal/app/datasourcce/repository/redis"
 	"github.com/RusselVela/chatty/internal/app/domain"
 )
 
@@ -14,15 +14,17 @@ type ChannelClient struct {
 	Subscribe   chan *inmemory.UserBean
 	Unsubscribe chan *inmemory.UserBean
 	Broadcaster chan domain.Message
+	redisClient *redis.Client
 }
 
 // NewChannelClient returns a new client for Channel communication
-func NewChannelClient(channel *inmemory.ChannelBean) *ChannelClient {
+func NewChannelClient(channel *inmemory.ChannelBean, client *redis.Client) *ChannelClient {
 	channelClient := &ChannelClient{
 		Channel:     channel,
 		Subscribe:   make(chan *inmemory.UserBean),
 		Unsubscribe: make(chan *inmemory.UserBean),
 		Broadcaster: make(chan domain.Message),
+		redisClient: client,
 	}
 	channelClients[channel.Id.String()] = channelClient
 
@@ -60,7 +62,7 @@ func (cn *ChannelClient) createChannelMessage(message string) domain.Message {
 }
 
 func (cn *ChannelClient) broadcastMessage(message domain.Message) {
-	//TODO Save to Redis
+	cn.redisClient.StoreMessage(message)
 
 	for _, userId := range cn.Channel.Members {
 		wsClient := clients[userId]
