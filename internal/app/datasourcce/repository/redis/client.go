@@ -4,13 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
-	"time"
-
 	"github.com/RusselVela/chatty/internal/app/domain"
 	"github.com/knadh/koanf"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
+	"sync"
 )
 
 const (
@@ -67,8 +65,8 @@ func (c *Client) StoreMessage(message domain.Message) {
 		redisMu.Unlock()
 	}()
 
-	id := time.Now().UnixMilli()
-	message.Id = id
+	//id := time.Now().UnixMilli()
+	//message.Id = id
 	jsonMsg, err := json.Marshal(message)
 	if err != nil {
 		zap.S().Errorf("failed to marshall message for storing: %v", message)
@@ -81,7 +79,6 @@ func (c *Client) StoreMessage(message domain.Message) {
 	case domain.TypeChannel:
 		break
 	}
-
 }
 
 // GetMessages retrieves all messages mapped to the given key userID from the redis instance
