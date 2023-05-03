@@ -18,7 +18,7 @@ func TestTokenUser(t *testing.T) {
 	suite.Run(t, new(TokenUserSuite))
 }
 
-func (tu *TokenUserSuite) TestTokenUser_AddTokenUser() {
+func (tu *TokenUserSuite) TestTokenUserAddTokenUser() {
 	AddTokenToUser("123", "456789")
 	token := GetToken("123")
 	tu.NotNil(token)

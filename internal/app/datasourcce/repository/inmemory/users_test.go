@@ -18,7 +18,7 @@ func TestUsers(t *testing.T) {
 	suite.Run(t, new(UsersSuite))
 }
 
-func (us *UsersSuite) TestUsers_NewUser() {
+func (us *UsersSuite) TestUsersNewUser() {
 	u, err := NewUser("admin", "admin")
 	us.NotNil(err)
 
